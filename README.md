@@ -8,9 +8,14 @@ Por ejemplo una imagen podría contener un sistema Ubuntu con un servidor Apache
 
 Las imágenes pueden almacenarse localmente o remotamente en un repositorio conocido como **registro**, donde están disponibles por nombre y normalmente en diferentes versiones etiquetadas, por ejemplo `ubuntu:latest` o `mysql:5.7`. El más utilizado es [Docker Hub](https://hub.docker.com/), un repositorio en la nube para crear, probar, guardar y distribuir  imágenes. También proporciona a los usuarios un espacio para crear  repositorios privados, automatizar funciones de compilación, crear *webhooks* o compartir espacios de trabajo.
 
+## Dockerfile
+
+Es un archivo de configuración que se utiliza para crear imágenes. En  dicho archivo indicamos qué es lo que queremos que tenga la imagen, y  los distintos comandos para instalar las herramientas.
+
 ## Containers / Contenedores
 
-Los **contenedores** ejecutan instancias de las imágenes. Al ejecutar una imagen se crea un contenedor.
+Son instancias en ejecución de una imagen. Al ejecutar una imagen se crea un contenedor. Son los que ejecutan cosas,  los que ejecutarán nuestra aplicación. El concepto de contenedor es como si restauráramos una máquina virtual a partir de un snapshot.
+ A partir de una única imagen, podemos ejecutar varios contenedores.
 
 Como las imágenes no cambian, las modificaciones realizadas durante la  ejecución de un contenedor no serán persistentes al detenerlo y volver a ejecutarlo. Pero es posible crear una nueva imagen, una nueva versión,  con los cambios realizados. Y si algo va mal podríamos volver de forma  sencilla a una versión anterior del contenedor.
 
@@ -19,6 +24,10 @@ Como las imágenes no cambian, las modificaciones realizadas durante la  ejecuci
 Los ficheros creados dentro de un contenedor no persisten entre ejecuciones. **Docker** [proporciona dos mecanismos](https://docs.docker.com/storage/) para que un contenedor almacene archivos en la máquina huésped y persistan después de detenerlo.
 
 Los volúmenes son el mecanismo preferido para mantener la persistencia de datos. Es posible definir volúmenes en modo «*sólo lectura*». Y volúmenes que pueden compartirse por más de un contenedor, algunos en modo «*lectura/escritura*» y otros en modo «*sólo lectura*»
+
+## **Links**
+
+Sirven para enlazar contenedores entre sí, que están dentro de una  misma máquina, sin exponer a los contenedores cuáles son los datos de la máquina que los contiene.
 
 ## Docker CLI
 
@@ -715,6 +724,12 @@ $ kubectl set image deployment/client-deployment client=stephengrinder/multi-cli
 ### Documentación oficial
 
 https://docs.docker.com/
+
+https://docs.docker.com/get-started/overview/
+
+### Dockerfile
+
+Documentación oficila: https://docs.docker.com/engine/reference/builder/
 
 ### AWS: ¿Qué es Docker?
 
