@@ -1,3 +1,29 @@
+# Conceptos
+
+## Image / Imagen
+
+Una **imagen** en Docker es la representación estática  de una aplicación o servicio con su configuración y todas sus  dependencias. Las imágenes se utilizan para crear contenedores, y nunca  cambian.
+
+Por ejemplo una imagen podría contener un sistema Ubuntu con un servidor Apache y una aplicación web.
+
+Las imágenes pueden almacenarse localmente o remotamente en un repositorio conocido como **registro**, donde están disponibles por nombre y normalmente en diferentes versiones etiquetadas, por ejemplo `ubuntu:latest` o `mysql:5.7`. El más utilizado es [Docker Hub](https://hub.docker.com/), un repositorio en la nube para crear, probar, guardar y distribuir  imágenes. También proporciona a los usuarios un espacio para crear  repositorios privados, automatizar funciones de compilación, crear *webhooks* o compartir espacios de trabajo.
+
+## Containers / Contenedores
+
+Los **contenedores** ejecutan instancias de las imágenes. Al ejecutar una imagen se crea un contenedor.
+
+Como las imágenes no cambian, las modificaciones realizadas durante la  ejecución de un contenedor no serán persistentes al detenerlo y volver a ejecutarlo. Pero es posible crear una nueva imagen, una nueva versión,  con los cambios realizados. Y si algo va mal podríamos volver de forma  sencilla a una versión anterior del contenedor.
+
+## Volumes / Volúmenes
+
+Los ficheros creados dentro de un contenedor no persisten entre ejecuciones. **Docker** [proporciona dos mecanismos](https://docs.docker.com/storage/) para que un contenedor almacene archivos en la máquina huésped y persistan después de detenerlo.
+
+Los volúmenes son el mecanismo preferido para mantener la persistencia de datos. Es posible definir volúmenes en modo «*sólo lectura*». Y volúmenes que pueden compartirse por más de un contenedor, algunos en modo «*lectura/escritura*» y otros en modo «*sólo lectura*»
+
+## Docker CLI
+
+Herramienta Docker para terminal.
+
 # Comandos: Docker CLI
 
 ## Crear imagen y ejecutar
@@ -498,7 +524,7 @@ $ docker stop 852b5021a89b
 $ docker stop nombre_del_contenedor
 ```
 
-# Docker Compose
+# Docker  Compose
 
 ## Qué es
 
@@ -682,11 +708,36 @@ $ kubectl delete -n default deployment web
 $ kubectl set image deployment/client-deployment client=stephengrinder/multi-client:v5
 ```
 
+# Recursos
 
+## Docker
 
-## Recursos
+### Documentación oficial
+
+https://docs.docker.com/
+
+### AWS: ¿Qué es Docker?
+
+https://aws.amazon.com/es/docker/
+
+### Artículos
+
+- Running a Docker container as a non-root user: https://medium.com/redbubble/running-a-docker-container-as-a-non-root-user-7d2e00f8ee15
+- Running Docker Containers as Current Host User: https://jtreminio.com/blog/running-docker-containers-as-current-host-user/
+
+## Kubernetes
+
+### Official cheatsheet
+
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
 
 ### Cursos IBM
 
 https://www.ibm.com/es-es/cloud/kubernetes-service/kubernetes-tutorials?utm_content=SRCWW&p1=Search&p4=43700066871613664&p5=p&gclid=Cj0KCQjw_fiLBhDOARIsAF4khR39sNFIo5Ofe5sAc6FG527DTbobS-8ZCiYXDLAa4NB_c5SCxdzicZoaAlTVEALw_wcB&gclsrc=aw.ds
+
+## Integración continua
+
+### Travis
+
+https://www.travis-ci.com/
 
