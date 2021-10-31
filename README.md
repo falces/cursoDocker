@@ -617,3 +617,76 @@ Para ver los puntos de montaje de un contenedor levantado:
 $ docker inspect --format='{{json .Mounts}}' MyApp
 ```
 
+# Kubernetes
+
+## Comandos
+
+### Iniciar un servicio
+
+```bash
+$ kubectl apply -f nombre-archivo.yaml
+```
+
+### Listar servicios por tipo
+
+```bash
+$ kubectl get pods
+$ kubectl get services
+$ kubectl get deployments
+
+$ kubeclt get pods,services
+
+$ kubectl get all
+```
+
+### Lista servicios con namespaces
+
+```bash
+$ kubectl get deployments --all-namespaces
+$ kubectl get all --all-namespaces
+```
+
+```
+NAMESPACE     NAME                READY   UP-TO-DATE   AVAILABLE   AGE
+default       client-deployment   1/1     1            1           28m
+default       web                 5/5     5            5           5m50s
+kube-system   coredns             2/2     2            2           32h
+```
+
+> Fuente: https://stackoverflow.com/questions/40686151/kubernetes-pod-gets-recreated-when-deleted
+
+### Descripción de un servicio
+
+```bash
+# kubectl describe [type]/[name]
+$ kubectl describe deplyment/client-deployment
+```
+
+
+
+### Borrar despliegue
+
+```bash
+# kubectl delete -n [NAMESPACE] [type] [DEPLOYMENT]
+$ kubectl delete -n default deployment web
+```
+
+> Fuente: https://stackoverflow.com/questions/40686151/kubernetes-pod-gets-recreated-when-deleted
+
+### Cambiar una propiedad de un servicio
+
+```bash
+# kubectl set [property] [type]/[name] [container_name] = [new image to use]
+
+# Forzar la actualización de un servicio:
+$ kubectl set image deployment/client-deployment client=stephengrinder/multi-client:v5
+```
+
+
+
+## Recursos
+
+### Cursos IBM
+
+https://www.ibm.com/es-es/cloud/kubernetes-service/kubernetes-tutorials?utm_content=SRCWW&p1=Search&p4=43700066871613664&p5=p&gclid=Cj0KCQjw_fiLBhDOARIsAF4khR39sNFIo5Ofe5sAc6FG527DTbobS-8ZCiYXDLAa4NB_c5SCxdzicZoaAlTVEALw_wcB&gclsrc=aw.ds
+
