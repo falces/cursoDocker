@@ -2,11 +2,23 @@
 
 ## Image / Imagen
 
-Una **imagen** en Docker es la representación estática  de una aplicación o servicio con su configuración y todas sus  dependencias. Las imágenes se utilizan para crear contenedores, y nunca  cambian.
+Una **imagen** en Docker es la representación estática  de una aplicación o servicio con su configuración y todas sus  dependencias. Las imágenes se utilizan para crear contenedores y nunca cambian.
 
 Por ejemplo una imagen podría contener un sistema Ubuntu con un servidor Apache y una aplicación web.
 
 Las imágenes pueden almacenarse localmente o remotamente en un repositorio conocido como **registro**, donde están disponibles por nombre y normalmente en diferentes versiones etiquetadas, por ejemplo `ubuntu:latest` o `mysql:5.7`. El más utilizado es [Docker Hub](https://hub.docker.com/), un repositorio en la nube para crear, probar, guardar y distribuir  imágenes. También proporciona a los usuarios un espacio para crear  repositorios privados, automatizar funciones de compilación, crear *webhooks* o compartir espacios de trabajo.
+
+Las imágenes son referenciadas por su id (que provee Docker) o su etiqueta, que creamos nosotros.
+
+Pueden ser repositadas en Docker Hub y consumidas por cualquier usuario.
+
+Las imágenes constan de una serie de capas:
+
+- Imagen base
+- Ejecución
+- Directorio de trabajo
+- Exposición
+- Comando
 
 ## Dockerfile
 
@@ -14,14 +26,13 @@ Es un archivo de configuración que se utiliza para crear imágenes. En  dicho a
 
 ## Containers / Contenedores
 
-Son instancias en ejecución de una imagen. Al ejecutar una imagen se crea un contenedor. Son los que ejecutan cosas,  los que ejecutarán nuestra aplicación. El concepto de contenedor es como si restauráramos una máquina virtual a partir de un snapshot.
- A partir de una única imagen, podemos ejecutar varios contenedores.
+Son instancias en ejecución de una imagen. Al ejecutar una imagen se crea un contenedor. Son los que ejecutan cosas,  los que ejecutarán nuestra aplicación. El concepto de contenedor es como si restauráramos una máquina virtual a partir de un snapshot. A partir de una única imagen, podemos ejecutar varios contenedores.
 
 Como las imágenes no cambian, las modificaciones realizadas durante la  ejecución de un contenedor no serán persistentes al detenerlo y volver a ejecutarlo. Pero es posible crear una nueva imagen, una nueva versión,  con los cambios realizados. Y si algo va mal podríamos volver de forma  sencilla a una versión anterior del contenedor.
 
 ## Volumes / Volúmenes
 
-Los ficheros creados dentro de un contenedor no persisten entre ejecuciones. **Docker** [proporciona dos mecanismos](https://docs.docker.com/storage/) para que un contenedor almacene archivos en la máquina huésped y persistan después de detenerlo.
+Los ficheros creados dentro de un contenedor no persisten entre ejecuciones. **Docker** [proporciona dos mecanismos](https://docs.docker.com/storage/) para que un contenedor almacene archivos en la máquina huésped y persistan después de detenerlo. Es la manera sencilla y predefinida para almacenar todos los ficheros (salvo unas pocas excepciones) de un contenedor, usará el espacio de  nuestro equipo real y en “/var/lib/docker/volumes” creará una carpeta  para cada contenedor.
 
 Los volúmenes son el mecanismo preferido para mantener la persistencia de datos. Es posible definir volúmenes en modo «*sólo lectura*». Y volúmenes que pueden compartirse por más de un contenedor, algunos en modo «*lectura/escritura*» y otros en modo «*sólo lectura*»
 
@@ -31,9 +42,132 @@ Sirven para enlazar contenedores entre sí, que están dentro de una  misma máq
 
 ## Docker CLI
 
-Herramienta Docker para terminal.
+Herramienta para gestionar Docker desde el terminal.
+
+## Docker Hub
+
+Es un servicio cloud gestionado por Docker que nos permite construir, enlacar y gestionar nuestras imágenes Docker.
+
+Además de nuestras imágenes, podemos acceder a miles de imágenes de otros usuarios. Muchas de estas imágenes son lo que se conoce como imágenes oficiales: imágenes creadas por los fabricantes de productos, listas para consumir. Algunos ejemplos de imágenes oficiales:
+
+- PHP
+- Ubuntu
+- Nginx
+- MySQL
+- Redis
+- Node
+
+# Instalación
+
+## Linux / Windows / Mac OS
+
+Desde la web oficial https://www.docker.com/products/docker-desktop podemos descargar Docker para Linux, Windows y Mac.
+
+## Instalación manual en Linux
+
+Si no encontramos un instalador óptimo para nuestra distribución Linux, podemos hacer una instalación manual:
+
+```bash
+# Borrar posible versión anterior:
+$  sudo apt-get remove docker docker-engine docker.io containerd runc
+
+# Actualizar orígenes de software
+$ sudo apt-get update
+
+# Instalar prerequisitos:
+# Curso:
+$   sudo apt-get install \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        software-properties-common
+# Docker:
+$  sudo apt-get install \
+        ca-certificates \
+    	curl \
+   		gnupg \
+    	lsb-release
+    	
+# Descargar GPG Key oficial:
+$  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Añadir repositorio a APT:
+$ echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  
+# Actualizar e instalar:
+$ sudo apt-get update
+$ sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+# Probar:
+$ sudo docker run hello-world
+
+# Acciones post instalación
+# Ejecutar Docker sin privilegios root
+$ sudo groupadd docker
+$ sudo usermod -aG docker $USER
+# Cerrar y abrir sesión para recargar los privilegios del usuario.
+# Activar cambios a los grupos:
+$ newgrp docker
+# Hacer prueba sin sudo:
+$ docker run hello-world
+
+# Configurar Docker para arrancar al iniciar en distribuciones Linux que no lo hagan por defecto (Ubuntu y Debian sí lo hacen y esto no es necesario):
+$ sudo systemctl enable docker.service
+$ sudo systemctl enable containerd.service
+# Si queremos desactivar esto, usamos disable:
+$ sudo systemctl disable docker.service
+$ sudo systemctl disable containerd.service
+```
 
 # Comandos: Docker CLI
+
+## Docker Hub
+
+### Login
+
+Una vez creada nuestra cuenta en Docker Hub, podemos logar nuestro Docker-CLI: 
+
+```bash
+$ docker login
+```
+
+```
+Login with your Docker ID to push and pull images from Docker Hub. If you don't have a Docker ID, head over to https://hub.docker.com to create one.
+Username: nombre_de_usuario_docker_hub
+Password:
+Login Succeeded
+```
+
+Podemos salir:
+
+```bash
+$ docker logout
+```
+
+```
+Removing login credentials for https://index.docker.io/v1/
+```
+
+En ocasiones se corrompe la información de sesión en nuestro Docker y obtenemos errores cuando tratamos de descargar imágenes. En ese caso, renombramos el archivo de  registro y volvemos a logarnos:
+
+```bash
+$ docker logout
+$ mv ~/.docker/config.json ~/.docker/config_old.json
+$ docker login
+```
+
+### Buscar imágenes
+
+Podemos localizar las imágenes a través de Docker Hub que, además de ser mucho más fácil, nos permite consultar toda la documentación relativa al uso de las imágenes. Otra opción es buscar imágenes desde el terminal:
+
+```bash
+$ docker search php
+$ docker search php:latest
+$ docker search php:7.1.34-fpm
+$ docker search --filter "is-official=true" php:7.1.34-fpm
+```
 
 ## Crear imagen y ejecutar
 
@@ -53,7 +187,7 @@ El comando `run` es lo mismo que ejecutar los comandos `create` y `start`. Para 
 
 ```bash
 $ docker create hello-world # nombre de la imagen
-$ 0ccf62a4aaff2bb25b9d21e78d423251e17d710cf5ddaabc5858353b167431e9 # Nos devuelve el id del contenedor
+0ccf62a4aaff2bb25b9d21e78d423251e17d710cf5ddaabc5858353b167431e9 # Nos devuelve el id del contenedor
 # Con el id del contenedor levantamos la imagen:
 $ docker start -a 0ccf62a4aaff2bb25b9d21e78d423251e17d710cf5ddaabc5858353b167431e9
 ```
@@ -63,13 +197,13 @@ El comando `create` crea una imagen del contenedor, mientras que `start` ejecuta
 Podemos hacer lo mismo especificando un nombre para el contenedor con el atributo `name`, lo que nos permite no usar los id de contenedor:
 
 ```bash
-# Atributo: --name NombreDelContenedor
+# Atributo: --name [NOMBRE_DEL_CONTENEDOR]
 $ docker create --name HelloWorld hello-world
 $ deb4d7ca1ecd350c455c35363f2cfff1b67743a57f5752aef5ce5db08b60a43d
 $ docker start -a HelloWorld
 ```
 
-Podemos especificar comandos a ejecutar dentro del contenedor en el momento de su ejecución:
+Podemos especificar comandos a ejecutar dentro del contenedor en el momento de su ejeºcución:
 
 ```bash
 $ docker run busybox ls
@@ -102,16 +236,40 @@ $ docker ps --all
 Listar imágenes:
 
 ```bash
+# Listar todas las imágenes
 $ docker images
 $ docker image ls
+
+# Listar las imágenes de un repositorio
+# docker images [NOMBRE]
+$docker images mysql
+
+REPOSITORY   TAG       IMAGE ID       CREATED        SIZE
+mysql        8.0.27    ecac195d15af   2 weeks ago    516MB
+mysql        5.7.33    450379344707   7 months ago   449MB
+
+# Filtrar búsqueda:
+# docker images --filter "<key>=<value>"
+# "reference" : localizar imágenes por nombre o etiqueta
+# "before" : filtrar imágenes creadas antes de una fecha específica
+# "since" : filtrar imágenes creadas a partir de una fecha específica
+# "label" : filtrar imágenes con una etiqueta específica
+# "dangling" : imágenes no utilizadas
+$ docker images --filter "dangling=true"
+
 ```
+
+
 
 ## Borrar contenedores e imágenes
 
-Borrar contenedor detenido:
+Debemos revisar las imágenes y contenedores que quedan en nuestro Docker, especialmente porque podemos ocupar mucho espacio de nuestro ordenador con datos que no estamos usando.
+
+Borrar contenedores detenidos:
 
 ```bash
 $ docker rm <container_id>
+$ docker rm <container_id> <container_id> <container_id>
 $ docker container rm <container_id>
 ```
 
@@ -132,6 +290,16 @@ Borrar imagen con instancias en ejecución:
 
 ```bash
 $ docker rmi -f <image_id>
+```
+
+Borrar imágenes no asociadas a contenedor
+
+```bash
+# Listar:
+$ docker images -f dangling=true
+
+# Eliminar:
+$ docker rmi -f $(docker images -f dangling=true)
 ```
 
 Borrar todas las imágenes:
@@ -181,6 +349,69 @@ Por ejemplo, enviamos el comando `sh` para ejecutar un terminal (también podrí
 $ docker exec -it <container_id> sh
 ```
 
+## Volúmenes
+
+### Crear volumen
+
+```bash
+# $ docker volume create [NOMBRE_DE_VOLUMEN]
+$ docker volume create db_data
+```
+
+### Listar volúmenes
+
+```bash
+$ docker volumes ls
+```
+
+```
+local     lds_portainer_data
+local     localphp_db_app
+local     localphp_db_data
+local     logistic-docker_portainer_data
+local     store-docker_portainer_data
+```
+
+### Detalle de volumen:
+
+```bash
+# $ docker volume inspect [NOMBRE_DE_VOLUMEN]
+$ docker volume inspect localphp_db_data
+```
+
+```
+[
+    {
+        "CreatedAt": "2021-11-03T07:30:05Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.project": "localphp",
+            "com.docker.compose.version": "2.0.0",
+            "com.docker.compose.volume": "db_data"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/localphp_db_data/_data",
+        "Name": "localphp_db_data",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+```
+
+### Eliminar volumen
+
+Hasta que no borremos los contenedores que usen ese volumen, no podremos borrarlo.
+
+```bash
+# $ docker volume rm [NOMBRE_DE_VOLUMEN]
+$ docker volume rm localphp_db_data
+```
+
+Eliminar volúmenes no usados por contenedores:
+
+```bash
+$ docker volume prune
+```
+
 # Crear nuestras propias imágenes
 
 ## Dockerfile
@@ -191,9 +422,33 @@ Es un archivo de texto plano que contiene líneas con configuración: qué progr
 2. Ejecutar comandos para instalar programas adicionales, dependencias, etc.
 3. Especificar un comando para ejecutar al iniciar el contenedor
 
-Ejemplo: vamos a crear nuestra propia imagen con Redis:
+La estructura de Dockerfile es:
 
 ```dockerfile
+# Dockerfile
+
+# Instrucciones base
+ARG # Opcional
+FROM
+LABEL
+
+# Instrucciones de configuración
+WORKDIR
+RUN
+ADD | COPY
+ENV
+
+# Instrucciones de ejecución
+CMD
+ENTRYPOINT
+EXPOSE 
+```
+
+Ejemplo: vamos a crear nuestra propia imagen con Redis: 
+
+```dockerfile
+# Dockerfile
+
 # Con FROM decimos qué imagen vamos a usar como base:
 FROM alpine
 
@@ -210,20 +465,26 @@ Una vez hecho esto, nos situamos en el directorio y creamos el contenedor:
 $ docker build .
 ```
 
+Podemos añadir una etiqueta a la imagen y así referenciar a la imagen por esta etiqueta y no por el id:
+
+```bash
+$ docker build -t redis-test .
+```
+
 Descarga y crea el contenedor:
 
 ```bash
 [+] Building 1.8s (6/6) FINISHED
- => [internal] load build definition from Dockerfile                                                 
- => => transferring dockerfile: 249B                                                                 
- => [internal] load .dockerignore                                                                     
- => => transferring context: 2B                                                                       
- => [internal] load metadata for docker.io/library/alpine:latest                                     
- => [1/2] FROM docker.io/library/alpine                                                               
- => [2/2] RUN apk add --update redis                                                                 
- => exporting to image                                                                               
- => => exporting layers                                                                               
- => => writing image sha256:38903694787e77ff8b67dc422c273d29be43a8ff643abbe6e2dd787c78ad6336         
+ => [internal] load build definition from Dockerfile
+ => => transferring dockerfile: 249B
+ => [internal] load .dockerignore
+ => => transferring context: 2B
+ => [internal] load metadata for docker.io/library/alpine:latest
+ => [1/2] FROM docker.io/library/alpine
+ => [2/2] RUN apk add --update redis
+ => exporting to image
+ => => exporting layers
+ => => writing image sha256:38903694787e77ff8b67dc422c273d29be43a8ff643abbe6e2dd787c78ad6336
 ```
 
 ¿Qué hemos hecho? El primer paso: hemos usado como base Alpine, una distribución Linux muy ligera (apenas 5 megas) y completa. En el segundo paso nos hemos descargado e instalado Redis y, por último, el tercer paso, ejecutamos el comando `redis-server` para iniciar el servidor Redis.
@@ -236,25 +497,77 @@ $ docker run --name RedisApp 38903694787e77ff8b67dc422c273d29be43a8ff643abbe6e2d
 
 Y ya tenemos nuestra propia imagen con Redis funcionando y con el nombre RedisApp.
 
-### Imagen base
+### Publicar imagen en Docker Hub
 
-La primera línea de nuestro Dockerfile:
+Desde Docker Hub, dentro de nuestra cuenta, creamos un repositorio. El nombre del repositorio tendrá este formato:
+
+```
+[NOMBRE_DE_USUARIO]/[NOMBRE_DE_REPOSITORIO]
+```
+
+Desde Docker-CLI, una vez logados, creamos un nuevo tag para una imagen con el nombre del repositorio creado:
+
+```bash
+# docker tag [NOMBRE_DE_IMAGEN] [USUARIO]/[REPOSITORIO]:[TAG]
+# Si no especificamos [TAG] tomará "latest" por defecto
+$ docker tag redis-test falces/redis:redis-test
+```
+
+Una vez hecho esto, si listamos las imágenes con `$ docker images`, veremos las dos imágenes pero compartiendo `IMAGE ID`, ya que la nueva es tan sólo un alias de la anterior.
+
+Ahora publicamos la imagen:
+
+```BASH
+# docker image push [USUARIO]/[REPOSITORIO]:[TAG]
+$ docker image push falces/redis:redis-test
+```
+
+### Instrucciones base
+
+`FROM`: Instrucción obligatoria. Especifica la imagen base, de la que vamos a partir, para crear la imagen definitiva. Es el sistema operativo de la imagen. La única instrucción que puede ser escrita antes que `FROM` es `ARG`. Lo normal es que `FROM` contenga una imagen de sistema operativo o de una aplicación.
+
+En la primera línea de nuestro Dockerfile:
 
 ```dockerfile
 FROM alpine
 ```
 
-Instala una imagen base, un sistema operativo. Una imagen es como un ordenador sin sistema operativo, por lo tanto lo primero que hay que hacer es instalar el sistema operativo. Alpine es una distribución Linux que viene con una serie de programas preinstalados que nos ayudan a crear nuestra imagen.
+Instala una imagen base, un sistema operativo. Una imagen es como un ordenador sin sistema operativo, por lo tanto lo primero que hay que hacer es instalar el sistema operativo. *Alpine* es una distribución Linux que viene con una serie de programas preinstalados que nos ayudan a crear nuestra imagen.
 
-En una imagen base podemos especificar, usando tags, diferentes versiones. En Docker Hub podemos consultar todas las etiquetas que una imagen admite. Dado que Alpine es una distribución muy completa y ligera, muchas imágenes tienen versiones con esta distribución. Por ejemplo, si quisiéramos instalar Node como base, esta imagen tiene una etiqueta para instalar una versión de Alpine con Node:
+En una imagen base podemos especificar, usando tags, diferentes versiones. En *Docker Hub* podemos consultar todas las etiquetas que una imagen admite. Dado que *Alpine* es una distribución muy completa y ligera, muchas imágenes tienen versiones con esta distribución. Por ejemplo, si quisiéramos instalar *Node* como base, esta imagen tiene una etiqueta para instalar una versión de *Alpine* con *Node*:
 
 ```dockerfile
 FROM node:alpine
 ```
 
-### Instalación de dependencias y comandos previos
+##### Otros comandos base:
 
-La segunda línea de nuestro Dockerfile:
+`ARG`: Opcional. Define argumentos que usará la sentencia `FROM`. Ayuda a mantener parámetros (como, por ejemplo, versiones, bajo control):
+
+```dockerfile
+ARG CODE_VERSION=16.04
+```
+
+```Dockerfile
+# Sin ARG:
+FROM ubuntu:16.04
+
+# Con ARG:
+ARG CODE_VERSION=16.04
+FROM ubuntu:${CODE_VERSION}
+```
+
+`LABEL`: Opcional. Añade información metadata adicional de la imagen (ver apartado "listar imágenes"):
+
+```dockerfile
+LABEL Creator: "John Doe"
+```
+
+### Instrucciones de configuración
+
+`RUN`: hace que Docker ejecute el comando especificado en la imagen base (especificada en `FROM`). Se usan para la instalación de dependencias y ejecución de otros comandos necesarios previos al uso de la imanen.
+
+En la segunda línea de nuestro Dockerfile:
 
 ```dockerfile
 RUN apk add --update redis
@@ -267,11 +580,52 @@ RUN apk add --update redis
 RUN apk add --update gcc
 ```
 
-Con lo que además de Redis habríamos instalado el GCC, el compilador de colecciones GNU.
+Con lo que además de Redis habríamos instalado el GCC, el compilador de colecciones GNU. Otros ejemplos de uso del comando `RUN`:
 
-### Copiar archivos
+```dockerfile
+# Actualizar orígenes de instalación e instalar:
+RUN apt-get update && apt-get install -y curl \
+	&& apt-get clean \
+	&& rm -rf /var/lib/apt/lists/*
 
-En ocasiones es posible que necesitemos instalar dependencias de nuestro proyecto. Por ejemplo, para una aplicación Node, usamos
+# Crear un directorio:
+RUN mkdir /home/Codes
+```
+
+`WORKDIR`: especificamos cuál será el directorio de trabajo dentro del contenedor y partir de este momento todo se hará de forma relativa a este directorio
+
+```dockerfile
+WORKDIR /usr/app
+```
+
+`COPY` : copia archivos desde nuestro ordenador al contenedor. Dado que hemos determinado el directorio de trabajo, si usamos `./` como destino los archivos se copiarán en el directorio de trabajo. Si no hubiéramos especificado directorio de trabajo, los archivos se habrían copiado en la raíz del contenedor o nos habría dado error, dependiendo de la versión de la imagen base.
+
+El resultado sería:
+
+```dockerfile
+WORKDIR /usr/app
+COPY ./ ./
+RUN npm install
+
+# Alternativo
+WORKDIR /usr/app
+COPY . .
+RUN npm install
+```
+
+`ADD`: Funciona de la misma forma que `COPY`, pero nos ofrece la posibilidad de utilizar como origen una URL o gestionar archivos comprimidos. Las buenas prácticas con Dockerfile (https://docs.docker.com/develop/develop-images/dockerfile_best-practices/) sugieren utilizar `COPY` siempre que no sea necesaria una funcionalidad específica de `ADD`.
+
+`ENV`: declara variables de entorno dentro del contenedor:
+
+```dockerfile
+ENV USER Nombre-Usuario
+ENV SHELL /bin/bash
+ENV LOGNAME usuario-log
+```
+
+##### Caso de uso
+
+En ocasiones es posible que necesitemos instalar dependencias de nuestro proyecto. Por ejemplo, para una aplicación Node, usamos:
 
 ```dockerfile
 RUN npm install
@@ -302,24 +656,31 @@ COPY . .
 
 Con esto añadimos un paso más, muy corto, la copia de un archivo. Pero si este archivo no es modificado, cuando volvemos a construir el contenedor Docker no ejecuta el siguiente comando, ya que nada ha cambiado y, después, copia los archivos. Dado que no volvemos a instalar dependencias, el proceso `build` es mucho más rápido.
 
-### Directorio de trabajo
+### Instrucciones de ejecución
 
-Con `WORKDIR` especificamos cuál será el directorio de trabajo. A partir de este momento todo se hará de forma relativa a este directorio dentro del contenedor. `COPY` copia archivos desde nuestro ordenador al contenedor. Dado que hemos determinado el directorio de trabajo, si usamos `./` como destino los archivos se copiarán en el directorio de trabajo. Si no hubiéramos especificado directorio de trabajo, los archivos se habrían copiado en la raíz del contenedor o nos habría dado error, dependiendo de la versión de la imagen base.
+`EXPOSE`: informa a Docker del puerto en el que nuestra imagen estará escuchando peticiones. Importante: NO PUBLICA EL PUERTO, tan sólo informa. El mapeo del puerto se debe especificar cuando levantamos el contenedor, por lo tanto la instrucción `EXPOSE` tan sólo documenta (en ocasiones es utilizado por algún proceso automático como veremos más adelante) el puerto que la aplicación de la imagen usará para escuchar peticiones:
 
-El resultado sería:
+Para mapear el puerto usamos el parámetro `-p` del comando `run`. Este parámetro funciona a modo de documentación, ciertas aplicaciones (por ejemplo Travis para integración continua) leen esta configuración y gestionan los puertos:
 
 ```dockerfile
-WORKDIR /usr/app
-COPY ./ ./
-RUN npm install
+# Es lo mismo, por defecto el protocolo es TCP:
+EXPOSE 80/tcp
+EXPOSE 80
 
-# Alternativo
-WORKDIR /usr/app
-COPY . .
-RUN npm install
+EXPOSE 80/udp
 ```
 
-### Comando de inicio
+`CMD`: el comando que queremos ejecutar al iniciar el contenedor, por ejemplo:
+
+```dockerfile
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+Ejecutaría el comando:
+
+```bash
+$ nginx -g daemon off;
+```
 
 La tercera línea de nuestro Dockerfile:
 
@@ -335,18 +696,6 @@ Podemos tener diferentes archivos Dockerfile, por ejemplo, según en el entorno 
 
 ```bash
 $ docker build -f Dockerfile.dev .
-```
-
-### Exponer puertos
-
-Con la instrucción EXPOSE podemos decir a Docker a través de qué puerto escuchará nuestra aplicación en tiempo de ejecución. Esto no mapea el puerto, por lo que no podremos acceder al contenedor a través del puerto especificado con esta instrucción; para esto usamos el parámetro -p del comando run. Este parámetro funciona a modo de documentación, ciertas aplicaciones (por ejemplo Travis para integración continua) leen esta configuración y gestionan los puertos:
-
-```dockerfile
-# Es lo mismo, por defecto el protocolo es TCP:
-EXPOSE 80/tcp
-EXPOSE 80
-
-EXPOSE 80/udp
 ```
 
 ## Build: construir imágenes
@@ -697,8 +1046,6 @@ kube-system   coredns             2/2     2            2           32h
 $ kubectl describe deplyment/client-deployment
 ```
 
-
-
 ### Borrar despliegue
 
 ```bash
@@ -755,4 +1102,3 @@ https://www.ibm.com/es-es/cloud/kubernetes-service/kubernetes-tutorials?utm_cont
 ### Travis
 
 https://www.travis-ci.com/
-
