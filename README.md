@@ -30,11 +30,23 @@ Son instancias en ejecución de una imagen. Al ejecutar una imagen se crea un co
 
 Como las imágenes no cambian, las modificaciones realizadas durante la  ejecución de un contenedor no serán persistentes al detenerlo y volver a ejecutarlo. Pero es posible crear una nueva imagen, una nueva versión,  con los cambios realizados. Y si algo va mal podríamos volver de forma  sencilla a una versión anterior del contenedor.
 
-## Volumes / Volúmenes
+## Almacenamiento / Storage
 
-Los ficheros creados dentro de un contenedor no persisten entre ejecuciones. **Docker** [proporciona dos mecanismos](https://docs.docker.com/storage/) para que un contenedor almacene archivos en la máquina huésped y persistan después de detenerlo. Es la manera sencilla y predefinida para almacenar todos los ficheros (salvo unas pocas excepciones) de un contenedor, usará el espacio de  nuestro equipo real y en “/var/lib/docker/volumes” creará una carpeta  para cada contenedor.
+La información generada durante la vida del contenedor se pierde cuando este se detiene a no ser que configuremos algún tipo de persistencia de datos. Para esto, Docker nos ofrece dos (tres, si utilizamos Linux como host) formas de anclar puntos del host con el contenedor:
+
+### Volúmenes
+
+Docker configura un path dentro del host y se le asigna un nombre de volumen. El contenedor únicamente conoce este nombre de volumen. Por lo tanto, aplicaciones externas que accedan al contenedor no tendrán forma de acceder a la ubicación real de la información. Este asilamiento mantiene la integridad y seguridad de host y contenedor.
 
 Los volúmenes son el mecanismo preferido para mantener la persistencia de datos. Es posible definir volúmenes en modo «*sólo lectura*». Y volúmenes que pueden compartirse por más de un contenedor, algunos en modo «*lectura/escritura*» y otros en modo «*sólo lectura*»
+
+### Bind Mounts
+
+Su funcionamiento es prácticamente igual que el de los volúmenes, salvo por el detalle de que nos permite seleccionar cualquier ubicación del host para persistir la información. Esto en muchos casos puede ser útil, pero por otro lado expone información del contenedor fuera de éste, lo que puede representar un problema de seguridad.
+
+### TMPFS
+
+Si estamos ejecutando Docker en Linux podemos utilizar esta tercera vía. Con este método, el contenedor puede crear archivos fuera de su capa de escritura, en el host, siendo accesible por éste. Es temporal y sólo persiste en la memoria del host, por lo que cuando el contenedor para (o reinicia), la información se pierde.
 
 ## **Links**
 
@@ -351,10 +363,14 @@ $ docker exec -it <container_id> sh
 
 ## Volúmenes
 
+Los volúmenes se utilizan para persistir la información generada en los contenedores. Esto es especialmente importante ya que si no persistimos esta información, cuando el contenedor se para la información se pierde.
+
+Podemos elegir dónde persistir esta información (host local, cloud, etc.) Para persistir esta información usamos un objeto de Docker llamado volúmen.
+
 ### Crear volumen
 
 ```bash
-# $ docker volume create [NOMBRE_DE_VOLUMEN]
+# docker volume create [NOMBRE_DE_VOLUMEN]
 $ docker volume create db_data
 ```
 
@@ -375,7 +391,7 @@ local     store-docker_portainer_data
 ### Detalle de volumen:
 
 ```bash
-# $ docker volume inspect [NOMBRE_DE_VOLUMEN]
+# docker volume inspect [NOMBRE_DE_VOLUMEN]
 $ docker volume inspect localphp_db_data
 ```
 
@@ -402,7 +418,7 @@ $ docker volume inspect localphp_db_data
 Hasta que no borremos los contenedores que usen ese volumen, no podremos borrarlo.
 
 ```bash
-# $ docker volume rm [NOMBRE_DE_VOLUMEN]
+# docker volume rm [NOMBRE_DE_VOLUMEN]
 $ docker volume rm localphp_db_data
 ```
 
@@ -410,6 +426,212 @@ Eliminar volúmenes no usados por contenedores:
 
 ```bash
 $ docker volume prune
+```
+
+### Ejecutar contenedor asignando volumen
+
+Al ejecutar un contenedor podemos crear un volumen y asignarlo a una carpeta del contenedor. De esta forma, lo que suceda en esta carpeta lo tendremos reflejado en una ubicación del host:
+
+```bash
+# docker run --volume [NOMBRE_DE_VOLUMEN]:[UBICACIÓN_EN CONTENEDOR]
+$ docker run --volume db_data:/var/log nginx:latest
+```
+
+### Inspeccionar volumen
+
+```bash
+#  docker volume inspect [NOMBRE_DE_VOLUMEN]
+$  docker volume inspect db_data
+```
+
+Obtenemos la información del volumen, incluida la carpeta de nuestro host donde está persistiendo la información (`Mountpoint`):
+
+```
+{
+	"CreatedAt": "2021-11-07T15:04:16Z",
+	"Driver": "local",
+	"Labels": null,
+	"Mountpoint": "/var/lib/docker/volumes/db_data/_data",
+	"Name": "db_data",
+	"Options": null,
+	"Scope": "local"
+}
+```
+
+Si inspeccionamos un contenedor al que le hemos asignado un volumen:
+
+```bash
+# Ver toda la información del contenedor:
+# docker container inspect [NOMBRE_DE_CONTENEDOR]
+$ docker container inspect my-nginx
+
+# Filtrar y formatear (con python) únicamente la información relativa al volúmen (clave Mounts del JSON)
+# docker container inspect --format "{{json .Mounts}}" [NOMBRE_DE_CONTENEDOR] | python -m json.tool
+$ docker container inspect --format "{{json .Mounts}}" my-nginx | python -m json.tool
+```
+
+```
+[
+    {
+        "Type": "volume",
+        "Name": "db_data",
+        "Source": "/var/lib/docker/volumes/db_data/_data",
+        "Destination": "/var/log",
+        "Driver": "local",
+        "Mode": "z",
+        "RW": true,
+        "Propagation": ""
+    }
+]
+```
+
+## Redes
+
+Dos contenedores levantados de forma independiente no tienen comunicación entre ellos, son completamente independientes.
+
+Supongamos que tenemos levantado un contenedor con Redis, funcionando y escuchando peticiones en su puerto. Por otro lado, tenemos levantado un contenedor Node en el que hemos instanciado una conexión con Redis. Pues bien, este último contenedor nos dará error al conectar con Redis, ya que aunque ambos contenedores estén funcionando no tienen capacidad para comunicarse entre ellos. Esto lo resolvemos con Docker Compose.
+
+Esto lo resolvemos con Docker Compose. Cuando creamos estos dos contenedores en el mismo Docker Compose éstos se pueden comunicar entre sí haciendo referencia únicamente al nombre que se les ha dado dentro del servicio, ya que se crea una red para albergar todos los contenedores indicados. Así, en nuestra aplicación, si usamos Node la conexión con el servidor Redis se hará así:
+
+```javascript
+const redisClient = redis.createClient({
+    host: 'redis-server', // Nombre del servicio en docker-compose.yaml
+    port: 6379
+});
+```
+
+Estas conexiones son gestionadas por objetos conocidos como network drivers:
+
+- Software que gestiona la red del contenedor. Se gestionan con el comando `docker network`, sin necesidad de archivos o imágenes.
+- Gestionan la comunicación entre contenedores y la comunicación con el host: direcciones IP y puertos.
+
+###  Crear una red
+
+Con el atributo `--driver` indicaremos el tipo, en este caso, `bridge`:
+
+```bash
+$ docker network create --driver brigde mi-red
+```
+
+Docker nos devuelve el ID de la red creada:
+
+```
+0d8f3d31fbdf31c570cbfa32e60be9e5d27a399ac4f38861cced6cf2ab0d116d
+```
+
+Creamos una red tipo bridge con subnet y rango de IPS:
+
+```bash
+$ docker network create --driver bridge --subnet=192.168.0.0/16 --ip-range=192.168.5.0/24 mi-red-1
+```
+
+### Listar redes
+
+```bash
+$ docker network ls
+```
+
+```
+NETWORK ID     NAME                           DRIVER    SCOPE
+0feb1fdcc786   bridge                         bridge    local
+565485a2b694   host                           host      local
+0d8f3d31fbdf   mi-red                         bridge    local
+b67ad0f12708   mi-red-1                       bridge    local
+c2359f9ff803   none                           null      local
+```
+
+Como vemos, no sólo tenemos las redes que acabamos de crear, también tenemos redes que por defecto Docker ha creado. Podemos listar redes usando un filtro:
+
+```bash
+$ docker network ls --filter driver=bridge
+```
+
+```
+NETWORK ID     NAME                           DRIVER    SCOPE
+0feb1fdcc786   bridge                         bridge    local
+0d8f3d31fbdf   mi-red                         bridge    local
+b67ad0f12708   mi-red-1                       bridge    local
+```
+
+### Conectar un contenedor a una red
+
+```BASH
+# docker network connect [NOMBRE_DE_RED] [NOMBRE_DE_CONTENEDOR]
+$ docker network connect mi-red my-nginx
+```
+
+Una vez hecho, inspeccionamos el contenedor para ver su información:
+
+```bash
+$ docker container inspect my-nginx
+```
+
+Lo que nos devolverá un JSON con todos los datos del contenedor, nos fijamos en la información de redes:
+
+```
+"Networks": {
+	"bridge": {
+		"IPAMConfig": null,
+		"Links": null,
+		"Aliases": null,
+		"NetworkID": "0feb1fdcc7867f0e764af49b07d7a6776238082a41be44f7219d768b86b9e16b",
+		"EndpointID": "c5754da97dfc31d84f2c7180646c9b1563269dab11ec23a1906a33082e730d40",
+		"Gateway": "172.17.0.1",
+		"IPAddress": "172.17.0.2",
+		"IPPrefixLen": 16,
+		"IPv6Gateway": "",
+		"GlobalIPv6Address": "",
+		"GlobalIPv6PrefixLen": 0,
+		"MacAddress": "02:42:ac:11:00:02",
+		"DriverOpts": null
+	},
+	"mi-red-1": {
+		"IPAMConfig": {},
+		"Links": null,
+		"Aliases": [
+			"2b0ca24fb098"
+		],
+		"NetworkID": "b67ad0f12708a50e3f792dd6848f2062a295291ec65b096dc4daadf0d0de8b92",
+		"EndpointID": "c049d6f853c8f54853721750e0d3109ffead44a703d600075e3c2bb1537c2a75",
+		"Gateway": "192.168.5.0",
+		"IPAddress": "192.168.5.1",
+		"IPPrefixLen": 16,
+		"IPv6Gateway": "",
+		"GlobalIPv6Address": "",
+		"GlobalIPv6PrefixLen": 0,
+		"MacAddress": "02:42:c0:a8:05:01",
+		"DriverOpts": {}
+	}
+```
+
+Y vemos la información de la red a la que hemos conectado. Veremos una red tipo bridge, esto es porque de no especificar red, Docker asigna una red bridge por defecto.
+
+### Inspeccionar red
+
+```bash
+# docker network inspect [NOMBRE_DE_RED]
+$ docker network inspect mi-red-1
+```
+
+Y dentro del JSON de salida, vemos nuestro contenedor asignado:
+
+```
+"Containers": {
+	"2b0ca24fb0989be5cbf90840bbe203600f3278ea22ec4f85c22c2a26a4277e19": {
+		"Name": "my-nginx",
+		"EndpointID": "c049d6f853c8f54853721750e0d3109ffead44a703d600075e3c2bb1537c2a75",
+		"MacAddress": "02:42:c0:a8:05:01",
+		"IPv4Address": "192.168.5.1/16",
+		"IPv6Address": ""
+	}
+}
+```
+
+### Desconectar un contenedor de una red
+
+```bash
+# docker network disconnect [NOMBRE_DE_RED] [NOMBRE_DE_CONTENEDOR]
+$ docker network disconnect mi-red-1 my-nginx
 ```
 
 # Crear nuestras propias imágenes
@@ -658,7 +880,7 @@ Con esto añadimos un paso más, muy corto, la copia de un archivo. Pero si este
 
 ### Instrucciones de ejecución
 
-`EXPOSE`: informa a Docker del puerto en el que nuestra imagen estará escuchando peticiones. Importante: NO PUBLICA EL PUERTO, tan sólo informa. El mapeo del puerto se debe especificar cuando levantamos el contenedor, por lo tanto la instrucción `EXPOSE` tan sólo documenta (en ocasiones es utilizado por algún proceso automático como veremos más adelante) el puerto que la aplicación de la imagen usará para escuchar peticiones:
+`EXPOSE`: informa a Docker del puerto en el que nuestra imagen estará escuchando peticiones. Importante: NO PUBLICA EL PUERTO, no lo hace accesible desde nuestro PC, tan sólo informa. El mapeo del puerto se debe especificar cuando levantamos el contenedor, por lo tanto la instrucción `EXPOSE` tan sólo documenta (en ocasiones es utilizado por algún proceso automático como veremos más adelante) el puerto que la aplicación de la imagen usará para escuchar peticiones:
 
 Para mapear el puerto usamos el parámetro `-p` del comando `run`. Este parámetro funciona a modo de documentación, ciertas aplicaciones (por ejemplo Travis para integración continua) leen esta configuración y gestionan los puertos:
 
@@ -886,11 +1108,24 @@ $ docker stop nombre_del_contenedor
 
 ## Qué es
 
-Es una herramienta que nos sirve para compartir y compenetrar aplicaciones de diferentes contenedores. También se utiliza para levantar contenedores al mismo tiempo y nos simplifica el trabajo a la hora de pasar argumentos cuando ejecutamos `docker run`.
+Es una herramienta que nos sirve para compartir y compenetrar aplicaciones de diferentes contenedores. También se utiliza para levantar contenedores al mismo tiempo y nos simplifica el uso que hemos estado haciendo hasta ahora con el comando `run` a la hora de pasar argumentos, mapear puertos, asignar nombres, etc.
 
-Supongamos que tenemos levantado un contenedor con Redis, funcionando y escuchando peticiones en su puerto. Por otro lado, tenemos levantado un contenedor Node en el que hemos instanciado una conexión con Redis. Pues bien, este último contenedor nos dará error ya que aunque ambos contenedores estén funcionando, no tienen capacidad para comunicarse entre ellos.
+El primer paso para utilizar Docker Compose es crear un archivo `docker-compose.yaml` en el que escribir la configuración que queramos. A partir de ese momento podemos utilizar el comando `$ docker-compose` en nuestro terminal para realizar diferentes tareas.
 
-En esencia vamos a meter los mismos comandos que ejecutamos en terminal (`build`, `run`, etc) y los vamos a encapsular en un archivo `docker-compose.yaml` que ejecutaremos desde Docker Compose CLI:
+En este archivo es vital mantener una correcta indentación de los elementos, ya que para indicar que una instrucción está dentro de otra lo hacemos únicamente con este método. Veamos cómo escribir el archivo `docker-compose.yaml`:
+
+## Versión
+
+La primera línea del archivo docker-compose.yaml contiene la versión de Docker Compose que vamos a utilizar. La estructura de este archivo ha ido evolucionando y es necesario que indiquemos a Docker qué versión va a leer para que se adapte a cómo recoger la información. Toda la info sobre versiones la podemos encontrar en https://docs.docker.com/compose/compose-file/compose-versioning/.
+
+```yaml
+# docker-compose.yaml
+version: '3'
+```
+
+## Servicios
+
+Lo primero que vamos a hacer es meter los mismos comandos que ejecutamos en terminal (`build`, `run`, etc) y los vamos a encapsular en un archivo `docker-compose.yaml` que ejecutaremos desde Docker Compose CLI:
 
 ```yaml
 # docker-compose.yaml
@@ -900,42 +1135,66 @@ services:            # Contenedores que necesitamos
     image: 'redis'   # Usando la imagen redis
   node-app:          # Contenedor node-app
     build: .         # Construído a partir de su Dockerfile
-    ports:           # Mapeo de puertos
-      - "4001:8081"
+    ports:           # Mapeo de puertos:
+      - "4001:8081"	 # [puerto de host]:[puerto de contenedor]
 ```
 
-Cuando creamos estos dos contenedores a partir del mismo Docker Compose, éstos se pueden comunicar entre sí haciendo referencia únicamente al nombre del servicio, ya que se crea una red para albergar todos los contenedores indicados. Así, en nuestra aplicación, por ejemplo, Node, la conexión con el servidor Redis se hará:
+Para cada imagen creamos un servicio, añadiéndolo dentro de `services`. Dentro de cada servicio podemos añadir diferentes instrucciones. En el ejemplo anterior hemos definido los servicios redis-server y node-app, y dentro de cada servicio le hemos dado su configuración con diferentes instrucciones. Algunas de estas instrucciones son:
 
-```javascript
-const redisClient = redis.createClient({
-    host: 'redis-server', // Nombre del servicio en docker-compose.yaml
-    port: 6379
-});
+### image
+
+Especifica el nombre de la imagen que será utilizada para crear el contenedor. Puede ser una imagen local o remota (Docker Hub).
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+	[nombre_de_servicio]:
+		image: '[nombre_de_imagen]'
 ```
 
-Como hemos comentado, Docker Compose nos ayuda a ejecutar los comandos y parámetros que ejecutamos en terminal (`build`, `run`). Así:
+### build
 
-```bash
-$ docker run myimage
-# Se corresponde con:
-$ docker-compose up
-$ docker-compose up -d # Ejecuta en segundo plano
+Se utiliza para declarar el contexto (carpeta raíz) y el archivo Dockerfile que se utilizará. Aquí ejemplificamos dos formas de usar la instrucción `build`:
 
-$ docker build .
-$ docker run myimage
-# Se corresponde con:
-$ docker-compose up --build
+1. Ejemplo 1: archivo Dockerfile que se encuentre en la misma ubicación.
 
-$ docker stop nombre_contenedor
-# Se corresponde con
-$ docker-compose down # Para y borra los contenedores
+2. Ejemplo 2: dando un contexto (carpeta raíz), una ubicación y un nombre de archivo (si especificamos `conext: .` indicamos la carpeta donde se encuentre el archivo `docker-compose.yaml`)
+
+Si no se especifica nombre de archivo, por defecto Docker trata de localizar un archivo con el nombre `Dockerfile` (sin extensión).
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  [nombre_de_servicio]:
+    image: '[nombre_de_imagen]'
+      # Ejemplo 1
+      build: .
+
+      # Ejemplo 2
+      build:
+        context: ./php
+        dockerfile: Dockerfile.dev
 ```
 
-Como vemos, con `docker-compose up` no especificamos imagen, ya que lo que hacemos es leer el archivo `docker-compose.yaml` y ejecutar sus instrucciones, allí es donde están los nombres de las imágenes.
+### command
+
+Ejecuta un comando en el contenedor. Es un array, por lo que deberán ir los comandos listados, indentados y precedidos con un guion:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    image: 'redis'
+    command:
+      - --protected-mode no
+```
 
 ## Control de procesos
 
-Con Docker Compose podemos controlar los procesos: qué hacer cuando nuestra aplicación falla y devuelve un código de error. Tenemos cuatro posibles actuaciones:
+Con Docker Compose podemos controlar los procesos: qué hacer cuando nuestra aplicación falla y devuelve un código de error. Esto lo hacemos con la instrucción `restart`. Tenemos cuatro posibles actuaciones:
 
 - `'no'` : no se reinicia el contenedor. Con comillas, ya que en yaml un no equivale a false, y no sería interpretado.
 - `always` : se reinicia el contenedor siempre
@@ -947,6 +1206,7 @@ Con Docker Compose podemos controlar los procesos: qué hacer cuando nuestra apl
 Se añade la instrucción `restart` seguida de la opción justo después de declarar el servicio en `docker-compose.yaml`:
 
 ```yaml
+# docker-compose.yaml
 version: '3'
 services:
   redis-server:
@@ -960,21 +1220,12 @@ services:
       - "4001:8081"
 ```
 
-## Comprobar el estado de los contenedores
-
-Con el comando
-
-```bash
-$ docker-compose ps
-```
-
-vemos el estado de los contenedores que están en nuestro archivo `docker-compose.yaml`.
-
 ## Volúmenes
 
 Docker Compose nos ayuda a simplificar los parámetros que añadimos a `docker run`. Uno de ellos es `volumes`, que nos sirve para mapear unidades entre nuestro ordenador y el contenedor:
 
 ```yaml
+# docker-compose.yaml
 version: "3"
 services:
   react-web-app:
@@ -1000,6 +1251,38 @@ Para ver los puntos de montaje de un contenedor levantado:
 ```bash
 $ docker inspect --format='{{json .Mounts}}' MyApp
 ```
+
+## Ejecución
+
+Como hemos comentado, Docker Compose nos ayuda a ejecutar los comandos y parámetros que ejecutamos en terminal (`build`, `run`). Así:
+
+```bash
+$ docker run myimage
+# Se corresponde con:
+$ docker-compose up
+$ docker-compose up -d # Ejecuta en segundo plano
+
+$ docker build .
+$ docker run myimage
+# Se corresponde con:
+$ docker-compose up --build
+
+$ docker stop nombre_contenedor
+# Se corresponde con
+$ docker-compose down # Para y borra los contenedores
+```
+
+Como vemos, con `docker-compose up` no especificamos imagen, ya que lo que hacemos es leer el archivo `docker-compose.yaml` y ejecutar sus instrucciones, allí es donde están los nombres de las imágenes.
+
+## Comprobar el estado de los contenedores
+
+Con el comando
+
+```bash
+$ docker-compose ps
+```
+
+vemos el estado de los contenedores que están en nuestro archivo `docker-compose.yaml`.
 
 # Kubernetes
 
@@ -1076,7 +1359,13 @@ https://docs.docker.com/get-started/overview/
 
 ### Dockerfile
 
-Documentación oficila: https://docs.docker.com/engine/reference/builder/
+Documentación: https://docs.docker.com/engine/reference/builder/
+
+### Docker Compose
+
+Versionado: https://docs.docker.com/compose/compose-file/compose-versioning/
+
+## Recursos exernos
 
 ### AWS: ¿Qué es Docker?
 
@@ -1093,7 +1382,9 @@ https://aws.amazon.com/es/docker/
 
 https://kubernetes.io/docs/reference/kubectl/cheatsheet/
 
-### Cursos IBM
+### Recursos externos
+
+#### Cursos IBM
 
 https://www.ibm.com/es-es/cloud/kubernetes-service/kubernetes-tutorials?utm_content=SRCWW&p1=Search&p4=43700066871613664&p5=p&gclid=Cj0KCQjw_fiLBhDOARIsAF4khR39sNFIo5Ofe5sAc6FG527DTbobS-8ZCiYXDLAa4NB_c5SCxdzicZoaAlTVEALw_wcB&gclsrc=aw.ds
 
