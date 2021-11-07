@@ -215,7 +215,7 @@ $ deb4d7ca1ecd350c455c35363f2cfff1b67743a57f5752aef5ce5db08b60a43d
 $ docker start -a HelloWorld
 ```
 
-Podemos especificar comandos a ejecutar dentro del contenedor en el momento de su ejeºcución:
+Podemos especificar comandos a ejecutar dentro del contenedor en el momento de su ejecución:
 
 ```bash
 $ docker run busybox ls
