@@ -271,8 +271,6 @@ $ docker images --filter "dangling=true"
 
 ```
 
-
-
 ## Borrar contenedores e imágenes
 
 Debemos revisar las imágenes y contenedores que quedan en nuestro Docker, especialmente porque podemos ocupar mucho espacio de nuestro ordenador con datos que no estamos usando.
@@ -365,7 +363,12 @@ $ docker exec -it <container_id> sh
 
 Los volúmenes se utilizan para persistir la información generada en los contenedores. Esto es especialmente importante ya que si no persistimos esta información, cuando el contenedor se para la información se pierde.
 
-Podemos elegir dónde persistir esta información (host local, cloud, etc.) Para persistir esta información usamos un objeto de Docker llamado volúmen.
+Podemos elegir dónde persistir esta información (host local, cloud, etc.) Para persistir esta información usamos un objeto de Docker llamado volúmen. Hay dos formas de declarar volúmenes:
+
+- Imperativa: Usando Docker-CLI, a través de terminal.
+- Declarativa: Usando Dockerfile o Docker Compose.
+
+Vamos a ver la forma imperativa, la forma declarativa la trataremos en el apartado Docker Compose:
 
 ### Crear volumen
 
@@ -1108,7 +1111,11 @@ $ docker stop nombre_del_contenedor
 
 ## Qué es
 
+Nos permite definir una aplicación multi contenedor en un único archivo y ejecutar nuestra aplicación y sus contenedores en una única instrucción, ya que tiene toda la información necesaria para ejecutarse.
+
 Es una herramienta que nos sirve para compartir y compenetrar aplicaciones de diferentes contenedores. También se utiliza para levantar contenedores al mismo tiempo y nos simplifica el uso que hemos estado haciendo hasta ahora con el comando `run` a la hora de pasar argumentos, mapear puertos, asignar nombres, etc.
+
+En este archivo definimos múltiples objetos: contenedores, redes, servicios, volúmenes, etc. y sus parámetros.
 
 El primer paso para utilizar Docker Compose es crear un archivo `docker-compose.yaml` en el que escribir la configuración que queramos. A partir de ese momento podemos utilizar el comando `$ docker-compose` en nuestro terminal para realizar diferentes tareas.
 
@@ -1149,8 +1156,30 @@ Especifica el nombre de la imagen que será utilizada para crear el contenedor. 
 # docker-compose.yaml
 version: '3'
 services:
-	[nombre_de_servicio]:
-		image: '[nombre_de_imagen]'
+  [NOMBRE_DE_SERVICIO]:
+    image: '[NOMBRE_DE_LA_IMAGEN]'
+```
+En la imagen podemos especificar la versión. Esto se hace añadiendo `:[VERSION]` después del nombre de la imagen. En caso de no especificar versión, Docker usará `:latest` para usar la versión más reciente.
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    # [IMAGEN]:[VERSION]
+    image: redis:latest
+```
+
+### container_name
+
+Establece un nombre para el contenedor
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
 ```
 
 ### build
@@ -1167,15 +1196,16 @@ Si no se especifica nombre de archivo, por defecto Docker trata de localizar un 
 # docker-compose.yaml
 version: '3'
 services:
-  [nombre_de_servicio]:
-    image: '[nombre_de_imagen]'
-      # Ejemplo 1
-      build: .
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
+    # Ejemplo 1
+    build: .
 
-      # Ejemplo 2
-      build:
-        context: ./php
-        dockerfile: Dockerfile.dev
+    # Ejemplo 2
+    build:
+    context: ./redis_conf
+    dockerfile: Dockerfile.dev
 ```
 
 ### command
@@ -1187,12 +1217,16 @@ Ejecuta un comando en el contenedor. Es un array, por lo que deberán ir los com
 version: '3'
 services:
   redis-server:
-    image: 'redis'
+    image: redis:latest
+    container_name: redis-server
+    build:
+      context: ./redis_conf
+      dockerfile: Dockerfile.dev
     command:
       - --protected-mode no
 ```
 
-## Control de procesos
+### restart
 
 Con Docker Compose podemos controlar los procesos: qué hacer cuando nuestra aplicación falla y devuelve un código de error. Esto lo hacemos con la instrucción `restart`. Tenemos cuatro posibles actuaciones:
 
@@ -1210,47 +1244,215 @@ Se añade la instrucción `restart` seguida de la opción justo después de decl
 version: '3'
 services:
   redis-server:
-    image: 'redis'
+    image: redis:latest
+    container_name: redis-server
+    build:
+      context: ./redis_conf
+      dockerfile: Dockerfile.dev
     command:
-      - --protected-mode no # Necesario por error en Redis
-  node-app:
-    restart: always # Se reiniciará el contenedor siempre.
-    build: .
-    ports:
-      - "4001:8081"
+      - --protected-mode no
+    restart: always # Se reiniciará el contenedor siempre
 ```
 
-## Volúmenes
+### volumes
 
-Docker Compose nos ayuda a simplificar los parámetros que añadimos a `docker run`. Uno de ellos es `volumes`, que nos sirve para mapear unidades entre nuestro ordenador y el contenedor:
+Docker Compose nos ayuda a simplificar los parámetros que añadimos a `docker run`. Uno de ellos es `volumes`, que nos sirve para mapear unidades entre nuestro ordenador y el contenedor. El formato es [CARPETA_DE_HOST]:[CARPETA_DE_CONTENEDOR]
 
 ```yaml
 # docker-compose.yaml
-version: "3"
+version: '3'
 services:
-  react-web-app:
-    # build: .
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
     build:
-      context: .
+      context: ./redis_conf
       dockerfile: Dockerfile.dev
-    # environment:
-      # - CHOKIDAR_USEPOLLING=true
-    ports:
-      - "3000:3000"
+    command:
+      - --protected-mode no
+    restart: always
     volumes:
-      - /app/node_modules
-      - .:/app
+      - /home/user/data:/data
 ```
 
-En `volumes` hemos mapeado en primer lugar la carpeta que no tenemos en local y después la carpeta raíz de nuestra aplicación, tal y como hemos hecho anteriormente con `docker run`.
-
-Aún conservamos la línea `COPY . .` en nuestro `Dockerfile.dev`. Es interesante mantener esta línea de cara a futura referencia, aunque queda inservible ya que cualquier acceso a /app irá directamente a nuestra carpeta local.
+Este ejemplo está hecho con una base de datos. En el caso de las aplicaciones que hemos visto anteriormente, tenemos en Dockerfile una sentencia `COPY` para copiar al contenedor nuestros archivos locales, lo que si mapeamos unidades no sería necesario. Es interesante mantener esta línea en Dockerfile de cara a futura referencia, aunque queda inservible ya que cualquier acceso a /app irá directamente a nuestra carpeta local.
 
 Para ver los puntos de montaje de un contenedor levantado:
 
 ```bash
-$ docker inspect --format='{{json .Mounts}}' MyApp
+$ docker inspect --format='{{json .Mounts}}' redis-server | python -m json.tool
 ```
+
+### environment
+
+Declararemos variables de entorno para nuestro contenedor:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
+    build:
+      context: ./redis_conf
+      dockerfile: Dockerfile.dev
+    command:
+      - --protected-mode no
+    restart: always
+    volumes:
+      - /home/user/data:/data
+    environment:
+      REDIS_USER: master
+      REDIS_PASSWORD: masterpass
+```
+
+Si entramos en el contenedor con un terminal y escribimos `$ echo $[NOMBRE_DE_VARIABLE]` veríamos su valor.
+
+### depends_on
+
+Indica qué contenedores deberán estar levantados antes de levantar el contenedor en el que se declara esta sentencia. Por ejemplo, si a nuestro docker-compose.yaml añadimos un servicio de una aplicación que estamos desarrollando, podemos indicarle que hasta que no esté levantado el contenedor de la base de datos no levante el de la aplicación, ya que depende de la base de datos para su funcionamiento:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
+    build:
+      context: ./redis_conf
+      dockerfile: Dockerfile.dev
+    command:
+      - --protected-mode no
+    restart: always
+    volumes:
+      - /home/user/data:/data
+    environment:
+      REDIS_USER: master
+      REDIS_PASSWORD: masterpass
+  # Segundo servicio:
+  my-app:
+  	image: my-react-app
+  	build: .
+  	volumes:
+  	  - ./:/var/www
+  	# Dependencia:
+  	depends_on:
+  	  - redis-server
+```
+
+### ports
+
+Expone los puertos del contenedor hacia el host. El formato es `"[PUERTO_DE_HOST]:[PUERTO_DE_CONTENEDOR]"`:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
+    build:
+      context: ./redis_conf
+      dockerfile: Dockerfile.dev
+    command:
+      - --protected-mode no
+    restart: always
+    volumes:
+      - /home/user/data:/data
+    environment:
+      REDIS_USER: master
+      REDIS_PASSWORD: masterpass
+  my-app:
+  	image: my-react-app
+  	build: .
+  	volumes:
+  	  - ./:/var/www
+  	depends_on:
+  	  - redis-server
+  	ports:
+  	  - "8080:80"
+```
+
+Cuando el contenedor esté levantado podremos acceder a nuestra aplicación a través de http://localhost:8080: el servidor web está escuchando en el puerto 80, pero hemos mapeado nuestro puerto local 8080 contra ese puerto 80 del contenedor. Si necesitáramos acceder al servicio de la base de datos también podríamos añadir una instrucción `ports` en su servicio.
+
+## Volúmenes
+
+En el apartado Docker CLI vimos la forma imperativa de crear volúmenes. Vamos a ver la forma declarativa, usando Docker Compose.
+
+Se pueden declarar dos tipos de volúmenes:
+
+### Host Mounted Volumes
+
+Se declaran dentro del servicio al que van a pertenecer, con la sintáxis: `[RUTA_HOST]:[RUTA_CONTENEDOR]`. La ruta del host local puede ser relativa o absoluta:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    # ...
+    volumes:
+      # Ruta absoluta:
+      - /mnt/c/Users/user.name/Documents/data/redis-data:/data
+      # Ruta relativa, carpeta dentro de la carpeta actual donde está docker-compose.yaml:
+      - ./redis-data:/data
+```
+
+### Docker Named Volumes
+
+Por un lado, en nuestro docker-file, declaramos el volumen añadiendo la instrucción `volumes` al mismo nivel de indentación que `services`, ya que es un objeto diferente:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  # ...
+volumes:
+  - redis_data:
+```
+
+En cada servicio asignamos su volumen. En este ejemplo, en el servicio my-app dejamos mapeado el volumen desde la carpeta de host donde tenemos nuestros archivos de la aplicación a la carpeta del contenedor desde la que el servidor web sirve la aplicación, mientras que para el servicio de base de datos le asignamos el volumen declarado en `volumes`:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    # ...
+    volumes:
+      # Indicamos el nombre del volumen declarado en volumes
+      - db_data:/data
+    # ...
+  my-app:
+  	# ...
+  	volumes:
+  	  - ./:/var/www
+  	# ...
+volumes:
+  - db_data:
+```
+
+Este tipo de volúmenes puede ser:
+
+- Interno: es la forma por defecto si no se especifica lo contrario. Este tipo de volúmenes tiene el alcance dentro del docker-compose.yaml y Docker los crea si no existen. Los volúmenes creados en el ejemplo anterior son internos.
+
+> Desde la versión 3.4 de Docker File el nombre del volumen puede venir de una variable de entorno declarada en un archivo `.env` situado en la misma carpeta que `docker-compose.yaml`.
+>
+> Es posible declarar el volumen como sólo lectura para aumentar la seguridad.
+
+- Externo: los volúmenes externos son los que hemos creado de forma imperativa usando Docker-CLI y tenemos que indicarlo de esta forma:
+
+    ```yaml
+    # docker-compose.yaml
+    version: '3'
+    services:
+      # ...
+    volumes:
+      redis_data:
+        external: true
+    ```
 
 ## Ejecución
 
@@ -1283,6 +1485,67 @@ $ docker-compose ps
 ```
 
 vemos el estado de los contenedores que están en nuestro archivo `docker-compose.yaml`.
+
+## Docker Compose CLI
+
+Disponemos de comandos para trabajar con Docker Compose desde la línea de comandos
+
+- Ver el contenido de docker-compose.yaml
+
+    ```bash
+    $ docker-compose config
+    ```
+
+- Ver los servicios declarados
+
+    ```bash
+    $ docker-compose config --services
+    ```
+
+    ```
+    api
+    client
+    nginx
+    postgres
+    redis
+    worker
+    ```
+
+- Ver las imágenes que se usarán para crear los contenedores:
+
+    ```bash
+    $ docker-compose images
+    ```
+
+- Ver los logs:
+
+    ```bash
+    $ docker-compose logs
+    ```
+
+- Ver los últimos 10 logs:
+
+    ```bash
+    $ docker-compose logs --tail=10
+    ```
+
+- Ver los contenedores que están en ejecución:
+
+    ```bash
+    $ docker-compose ps
+    ```
+
+- Ver los procesos en ejecución de todos los contenedores:
+
+    ```bash
+    $ docker-compose top
+    ```
+
+- Parar contenedores y eliminar recursos:
+
+    ```bash
+    $ docker-compose down
+    ```
 
 # Kubernetes
 
@@ -1363,6 +1626,8 @@ Documentación: https://docs.docker.com/engine/reference/builder/
 
 ### Docker Compose
 
+Referencia: https://docs.docker.com/compose/compose-file/compose-file-v3/#volume-configuration-reference
+
 Versionado: https://docs.docker.com/compose/compose-file/compose-versioning/
 
 ## Recursos exernos
@@ -1375,6 +1640,7 @@ https://aws.amazon.com/es/docker/
 
 - Running a Docker container as a non-root user: https://medium.com/redbubble/running-a-docker-container-as-a-non-root-user-7d2e00f8ee15
 - Running Docker Containers as Current Host User: https://jtreminio.com/blog/running-docker-containers-as-current-host-user/
+- Using volumes in Docker Compose: https://devopsheaven.com/docker/docker-compose/volumes/2018/01/16/volumes-in-docker-compose.html
 
 ## Kubernetes
 
