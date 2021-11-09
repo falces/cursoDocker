@@ -1,6 +1,6 @@
 # Guía
 
-Esta documentación se ha ido realizando durante el progreso de cursos sobre Docker y Kubernetes en los que se ha trabajado con diferentes versiones de Docker y D
+Esta documentación se ha ido realizando durante el progreso de cursos sobre Docker y Kubernetes en los que se ha trabajado con diferentes versiones de Docker y Docker Compose. Está publicada en https://github.com/falces/docker-docs, por lo que en caso de encontrar errores se agradece un Pull Request con la corrección.
 
 # Conceptos
 
