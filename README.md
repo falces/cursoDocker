@@ -1,3 +1,7 @@
+# Guía
+
+Esta documentación se ha ido realizando durante el progreso de cursos sobre Docker y Kubernetes en los que se ha trabajado con diferentes versiones de Docker y D
+
 # Conceptos
 
 ## Image / Imagen
@@ -38,11 +42,15 @@ La información generada durante la vida del contenedor se pierde cuando este se
 
 Docker configura un path dentro del host y se le asigna un nombre de volumen. El contenedor únicamente conoce este nombre de volumen. Por lo tanto, aplicaciones externas que accedan al contenedor no tendrán forma de acceder a la ubicación real de la información. Este asilamiento mantiene la integridad y seguridad de host y contenedor.
 
-Los volúmenes son el mecanismo preferido para mantener la persistencia de datos. Es posible definir volúmenes en modo «*sólo lectura*». Y volúmenes que pueden compartirse por más de un contenedor, algunos en modo «*lectura/escritura*» y otros en modo «*sólo lectura*»
+Los volúmenes son el mecanismo preferido para mantener la persistencia de datos. Es posible definir volúmenes en modo «*sólo lectura*». Y volúmenes que pueden compartirse por más de un contenedor, algunos en modo «*lectura/escritura*» y otros en modo «*sólo lectura*».
+
+Los volúmenes se almacenan en el host en una carpeta gestionada por Docker (Linux: `/var/lib/docker/volumes`, Windows: `C:\ProgramData\docker\volumes`).
 
 ### Bind Mounts
 
 Su funcionamiento es prácticamente igual que el de los volúmenes, salvo por el detalle de que nos permite seleccionar cualquier ubicación del host para persistir la información. Esto en muchos casos puede ser útil, pero por otro lado expone información del contenedor fuera de éste, lo que puede representar un problema de seguridad.
+
+Los bind mounts se almacenan en cualquier carpeta del host. Cualquier proceso o programa puede acceder a esta carpeta y modificar la información en cualquier momento.
 
 ### TMPFS
 
@@ -377,6 +385,10 @@ Vamos a ver la forma imperativa, la forma declarativa la trataremos en el aparta
 $ docker volume create db_data
 ```
 
+```
+db_data
+```
+
 ### Listar volúmenes
 
 ```bash
@@ -384,32 +396,25 @@ $ docker volumes ls
 ```
 
 ```
-local     lds_portainer_data
-local     localphp_db_app
-local     localphp_db_data
-local     logistic-docker_portainer_data
-local     store-docker_portainer_data
+DRIVER    VOLUME NAME
+local     db_data
 ```
 
 ### Detalle de volumen:
 
 ```bash
 # docker volume inspect [NOMBRE_DE_VOLUMEN]
-$ docker volume inspect localphp_db_data
+$ docker volume inspect db_data
 ```
 
 ```
 [
     {
-        "CreatedAt": "2021-11-03T07:30:05Z",
+        "CreatedAt": "2021-11-07T15:04:16Z",
         "Driver": "local",
-        "Labels": {
-            "com.docker.compose.project": "localphp",
-            "com.docker.compose.version": "2.0.0",
-            "com.docker.compose.volume": "db_data"
-        },
-        "Mountpoint": "/var/lib/docker/volumes/localphp_db_data/_data",
-        "Name": "localphp_db_data",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/db_data/_data",
+        "Name": "db_data",
         "Options": null,
         "Scope": "local"
     }
@@ -422,13 +427,29 @@ Hasta que no borremos los contenedores que usen ese volumen, no podremos borrarl
 
 ```bash
 # docker volume rm [NOMBRE_DE_VOLUMEN]
-$ docker volume rm localphp_db_data
+$ docker volume rm db_data
+```
+
+```
+db_data
 ```
 
 Eliminar volúmenes no usados por contenedores:
 
 ```bash
 $ docker volume prune
+```
+
+```
+WARNING! This will remove all local volumes not used by at least one container.
+Are you sure you want to continue? [y/N] y
+Deleted Volumes:
+577d214e014ec59f7e612f55ef8b7d56ee3f961f26ad378c92738af54ad16930
+957ef00f87adf9d1eb23471f519d72ea4fc7aa4c54e81aacdb6e505650ef8c10
+c8534bacc6424ce3e834a1f88c13b13eae151cf9030a3adc06345d3f48c634e7
+...
+
+Total reclaimed space: 5.21GB
 ```
 
 ### Ejecutar contenedor asignando volumen
@@ -440,31 +461,9 @@ Al ejecutar un contenedor podemos crear un volumen y asignarlo a una carpeta del
 $ docker run --volume db_data:/var/log nginx:latest
 ```
 
-### Inspeccionar volumen
-
-```bash
-#  docker volume inspect [NOMBRE_DE_VOLUMEN]
-$  docker volume inspect db_data
-```
-
-Obtenemos la información del volumen, incluida la carpeta de nuestro host donde está persistiendo la información (`Mountpoint`):
-
-```
-{
-	"CreatedAt": "2021-11-07T15:04:16Z",
-	"Driver": "local",
-	"Labels": null,
-	"Mountpoint": "/var/lib/docker/volumes/db_data/_data",
-	"Name": "db_data",
-	"Options": null,
-	"Scope": "local"
-}
-```
-
 Si inspeccionamos un contenedor al que le hemos asignado un volumen:
 
 ```bash
-# Ver toda la información del contenedor:
 # docker container inspect [NOMBRE_DE_CONTENEDOR]
 $ docker container inspect my-nginx
 
@@ -1379,13 +1378,11 @@ Cuando el contenedor esté levantado podremos acceder a nuestra aplicación a tr
 
 ## Volúmenes
 
-En el apartado Docker CLI vimos la forma imperativa de crear volúmenes. Vamos a ver la forma declarativa, usando Docker Compose.
+En el apartado Docker CLI vimos la forma imperativa de crear volúmenes. Vamos a ver la forma declarativa, usando Docker Compose. Existen estos tipos de volúmenes:
 
-Se pueden declarar dos tipos de volúmenes:
+### Volúmenes anónimos
 
-### Host Mounted Volumes
-
-Se declaran dentro del servicio al que van a pertenecer, con la sintáxis: `[RUTA_HOST]:[RUTA_CONTENEDOR]`. La ruta del host local puede ser relativa o absoluta:
+Cualquier ejecución de un archivo docker-compose.yaml crea, por defecto, un volumen anónimo. La información persistida en este tipo de volumen se pierde si eliminamos el contenedor y no es accesible por otros contenedores. En Linux la información se almacena en la carpeta `/var/lib/docker/volume`, en Windows es en `C:\ProgramData\docker\volumes`:
 
 ```yaml
 # docker-compose.yaml
@@ -1394,26 +1391,15 @@ services:
   redis-server:
     # ...
     volumes:
-      # Ruta absoluta:
-      - /mnt/c/Users/user.name/Documents/data/redis-data:/data
-      # Ruta relativa, carpeta dentro de la carpeta actual donde está docker-compose.yaml:
-      - ./redis-data:/data
+      # Ruta del contenedor
+      - /data
 ```
 
 ### Docker Named Volumes
 
+La información almacenada en un volumen de este tipo persiste incluso si eliminamos el contenedor y es accesible por otros contenedores. En Linux la información se almacena en la carpeta `/var/lib/docker/volume`, en Windows es en `C:\ProgramData\docker\volumes`.
+
 Por un lado, en nuestro docker-file, declaramos el volumen añadiendo la instrucción `volumes` al mismo nivel de indentación que `services`, ya que es un objeto diferente:
-
-```yaml
-# docker-compose.yaml
-version: '3'
-services:
-  # ...
-volumes:
-  - redis_data:
-```
-
-En cada servicio asignamos su volumen. En este ejemplo, en el servicio my-app dejamos mapeado el volumen desde la carpeta de host donde tenemos nuestros archivos de la aplicación a la carpeta del contenedor desde la que el servidor web sirve la aplicación, mientras que para el servicio de base de datos le asignamos el volumen declarado en `volumes`:
 
 ```yaml
 # docker-compose.yaml
@@ -1424,17 +1410,11 @@ services:
     volumes:
       # Indicamos el nombre del volumen declarado en volumes
       - db_data:/data
-    # ...
-  my-app:
-  	# ...
-  	volumes:
-  	  - ./:/var/www
-  	# ...
 volumes:
   - db_data:
 ```
 
-Este tipo de volúmenes puede ser:
+Este tipo de volúmenes pueden ser:
 
 - Interno: es la forma por defecto si no se especifica lo contrario. Este tipo de volúmenes tiene el alcance dentro del docker-compose.yaml y Docker los crea si no existen. Los volúmenes creados en el ejemplo anterior son internos.
 
@@ -1448,11 +1428,125 @@ Este tipo de volúmenes puede ser:
     # docker-compose.yaml
     version: '3'
     services:
-      # ...
+      redis-server:
+        # ...
+        volumes:
+          - db_data:/data
     volumes:
-      redis_data:
+      db_data:
         external: true
     ```
+
+### Bind Mounts
+
+Sólo tienen una diferencia con los Named Volumes: podemos especificar cualquier carpeta del host para persistir la información.
+
+En este ejemplo, en el servicio my-app dejamos mapeado el volumen desde la carpeta de host donde tenemos nuestros archivos de la aplicación a la carpeta del contenedor desde la que el servidor web sirve la aplicación (bind mount), mientras que para el servicio de base de datos le asignamos el volumen declarado en `volumes` (named volume):
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    # ...
+    volumes:
+      - db_data:/data
+    # ...
+  my-app:
+  	# ...
+  	volumes:
+  	  - ./myApp:/var/www
+  	# ...
+volumes:
+  - db_data:
+```
+
+## Redes
+
+Si no se especifica nada, por defecto Docker crea una red tipo bridge y añade a ella los contenedores que esté levantando. Podemos configurar una red en Compose y añadir a ella los servicios, configurando sus características. Creamos la red con la clave de primer nivel `networks`:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+# ...
+networks:
+  my-net:
+  	driver: bridge
+  	ipam: # IP Address Management
+  	  config:
+  	    - subnet: 100.0.0.0/24 # Rango de IPs
+  	    gateway: 100.0.0.1 # Opcional
+```
+
+Ahora, indicamos a los servicios a qué red pertecerán:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
+    build:
+      context: ./redis_conf
+      dockerfile: Dockerfile.dev
+    command:
+      - --protected-mode no
+    restart: always
+    volumes:
+      - /home/user/data:/data
+    environment:
+      REDIS_USER: master
+      REDIS_PASSWORD: masterpass
+    networks:
+      # Nombre de la red asignado en networks
+      my-net:
+      	ipv4_address: 100.0.0.2 # Dirección IPv4
+  my-app:
+  	image: my-react-app
+  	build: .
+  	volumes:
+  	  - ./:/var/www
+  	depends_on:
+  	  - redis-server
+  	ports:
+  	  - "8080:80"
+  	networks:
+      # Nombre de la red asignado en networks
+      my-net:
+      	ipv4_address: 100.0.0.3 # Dirección IPv4
+networks:
+  my-net:
+  	driver: bridge
+  	ipam: # IP Address Management
+  	  config:
+  	    - subnet: 100.0.0.0/24 # Rango de IPs
+  	    gateway: 100.0.0.1 # Opcional
+```
+
+Podemos añadir una serie de nombres DNS y asignarlos a una dirección IP, de la misma forma que hacemos en nuestro fichero hosts en Windows, por ejemplo:
+
+```yaml
+# docker-compose.yaml
+version: '3'
+services:
+  # ...
+  my-app:
+  	# ...
+  	networks:
+      my-net:
+      	ipv4_address: 100.0.0.3
+    extra-hosts:
+      # Añadimos con el formato [NOMBRE_DNS]:[IP]
+      - "otro.servicio.local:100.0.0.4"
+networks:
+  my-net:
+  	driver: bridge
+  	ipam:
+  	  config:
+  	    - subnet: 100.0.0.0/24
+  	    gateway: 100.0.0.1
+```
 
 ## Ejecución
 
