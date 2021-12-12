@@ -1704,6 +1704,243 @@ $ kubectl delete -n default deployment web
 $ kubectl set image deployment/client-deployment client=stephengrinder/multi-client:v5
 ```
 
+# Usando Docker en entornos de producción
+
+Para usar Docker en un entorno de producción es importante seguir pautas que nos ayuden a:
+
+- Mejorar la seguridad
+- Optimizar el tamaño de las imágenes
+- Tener entornos limpios y mantenibles
+- Usar características avanzadas de Docker
+
+## Usar imágenes oficiales
+
+En lugar de usar una imagen creada por alguien, vamos a usar las imágenes oficiales disponibles en Docker Hub. Y dentro de las imágenes oficiales, no vamos a usar imágenes de sistema operativo sobre las que instalaremos todo el software necesario, sino que usaremos las imágenes del software servidor.
+
+Por ejemplo, para un servidor Node evitaremos:
+
+```dockerfile
+# Dockerfile
+FROM ubuntu
+
+RUN apt-get upddate && apt-get install -y \
+    node \
+    && rm -rf /var/lib/apt/lists/*
+# ...
+```
+
+Usaremos:
+
+```dockerfile
+# Dockerfile
+FROM node
+```
+
+Conseguiremos una imagen más limpia, verificada y creada con estándares y buenas prácticas.
+
+## Usar versiones específicas
+
+Si utilizamos:
+
+```dockerfile
+# Dockerfile
+FROM node
+```
+
+Es lo mismo que utilizar
+
+```dockerfile
+# Dockerfile
+FROM node:latest
+```
+
+Lo que indica que puedes tener una versión diferente de la versión del anterior build, lo que nos puede llevar a fallos de servidor o comportamientos extraños. Por eso, *latest* es una etiqueta impredecible. Debemos usar:
+
+```dockerfile
+# Dockerfile
+FROM node:17.0.1
+```
+
+Cuanto más específico, mejor.
+
+## Usar imágenes ligeras
+
+Podemos encontrar imágenes oficiales basadas en sistemas operativos completos. Esto quiere decir que estamos instalando una cantidad de recursos enorme y que, en su mayoría, no necesitamos. Además, su tamaño es considerablemente más grande. Si utilizamos imágenes más ligeras:
+
+Las imágenes de sistemas operativos completos:
+
+- Ocupan mucho espacio en disco
+- Tienen más vulnerabilidades de seguridad porque tienen más software
+
+Debemos evitar:
+
+```dockerfile
+# Dockerfile
+FROM node:17.0.1
+```
+
+Si usamos imágenes más ligeras:
+
+- Sólo tendremos las aplicaciones y utilidades necesarias
+- Ocuparemos menos espacio
+- Podemos transferir las imágenes más rápido
+- Minimizamos las opciones de ataque
+
+Usaremos:
+
+```dockerfile
+# Dockerfile
+FROM node:17.0.1-alpine
+```
+
+Alpine es una distribución de Linux muy ligera, enfocada a la seguridad y muy popular. Si nuestra aplicación no necesita ninguna utilidad especial, elegiremos este tipo de distribuciones.
+
+## Optimizar la caché para las capas de la imagen
+
+Las capas de la imagen son cada una de las instrucciones que hay en el Dockerfile que la genera. Con cada instrucción se genera una capa con un tamaño específico que podemos consultar
+
+```bash
+# docker history [nombre_de_imagen]:[tag]
+$ docker history nginx:latest
+IMAGE          CREATED        CREATED BY                                      SIZE      COMMENT
+87a94228f133   2 months ago   /bin/sh -c #(nop)  CMD ["nginx" "-g" "daemon…   0B
+<missing>      2 months ago   /bin/sh -c #(nop)  STOPSIGNAL SIGQUIT           0B
+<missing>      2 months ago   /bin/sh -c #(nop)  EXPOSE 80                    0B
+<missing>      2 months ago   /bin/sh -c #(nop)  ENTRYPOINT ["/docker-entr…   0B
+<missing>      2 months ago   /bin/sh -c #(nop) COPY file:09a214a3e07c919a…   4.61kB
+<missing>      2 months ago   /bin/sh -c #(nop) COPY file:0fd5fca330dcd6a7…   1.04kB
+<missing>      2 months ago   /bin/sh -c #(nop) COPY file:0b866ff3fc1ef5b0…   1.96kB
+<missing>      2 months ago   /bin/sh -c #(nop) COPY file:65504f71f5855ca0…   1.2kB
+<missing>      2 months ago   /bin/sh -c set -x     && addgroup --system -…   64MB
+<missing>      2 months ago   /bin/sh -c #(nop)  ENV PKG_RELEASE=1~buster     0B
+<missing>      2 months ago   /bin/sh -c #(nop)  ENV NJS_VERSION=0.6.2        0B
+<missing>      2 months ago   /bin/sh -c #(nop)  ENV NGINX_VERSION=1.21.3     0B
+<missing>      2 months ago   /bin/sh -c #(nop)  LABEL maintainer=NGINX Do…   0B
+<missing>      2 months ago   /bin/sh -c #(nop)  CMD ["bash"]                 0B
+<missing>      2 months ago   /bin/sh -c #(nop) ADD file:910392427fdf089bc…   69.3MB
+```
+
+Cada vez que construimos una imagen Docker cachea cada capa, almacenándola en el ordenador host. Si no ha cambiado nada de la capa, esta se reutiliza desde la caché, lo que hace que el build sea mucho más rápido y que sólo se tengan que descargar el software de las capas nuevas o que hayan sido modificadas.
+
+Pero cuando una capa cambia, todas las capas siguientes se regeneran, no se leen desde la caché aunque no hayan cambiado. Por ejemplo:
+
+```dockerfile
+# Dockerfile
+FROM node:17.0.1-alpine			# CACHÉ
+WORKDIR /app				   # CACHÉ
+COPY myapp /app				   # NO CACHÉ
+RUN npm install --production	# NO CACHÉ
+CMD ["node", "src/index.js"]    # NO CACHÉ
+```
+
+En este ejemplo vemos que cada vez que un archivo de nuestra aplicación se modifique se instalarán todas las dependencias de Node, cuando lo óptimo es que las dependencias se instalen sólo cuando el archivo package.json se modifique:
+
+```dockerfile
+# Dockerfile
+FROM node:17.0.1-alpine			# CACHÉ
+WORKDIR /app				   # CACHÉ
+COPY package.json .			   # CACHÉ
+RUN npm install --production	# CACHÉ
+COPY myapp /app				   # NO CACHÉ
+CMD ["node", "src/index.js"]    # NO CACHÉ
+```
+
+De esta forma sólo si modificamos el archivo `package.json` se volverán a instalar las dependencias, mientras que si `package.json` no tiene modificaciones y sólo modificamos algún archivo de nuestra aplicación, las dependencias no se volverán a descargar.
+
+Por esto, debemos ordenar los comandos en Dockerfile por orden de frecuencia de modificación, de menos modificaciones a más modificaciones.
+
+## Excluir archivos y carpetas innecesarios
+
+Cuando desplegamos una aplicación nos podemos encontrar con carpetas y archivos que no son necesarios para ejecutar la aplicación en un entorno de producción (carpetas autogeneradas como /target o /build, archivos README, etc.) Con esto:
+
+- Reducimos el tamaño de nuestra imagen
+- Prevenimos la exposición de información delicada
+
+Para esto utilizamos el archivo .dockerignore, en la raíz del proyecto:
+
+```
+# .dockerignore
+.git
+.cache
+
+*.md
+
+private.key
+settings.json
+```
+
+## Usar Multi-Stage Builds
+
+Es posible que tengamos archivos y carpetas que necesitamos para construir nuestra imagen pero no para ejecutarla:
+
+- Dependencias para tests
+- Archivos temporales
+- Herramientas de desarrollo
+- Herramientas Build
+
+Si no limpiamos esto, de nuevo estamos incrementando el tamaño de nuestra imagen y las posibilidades de ataque de una forma innecesaria.
+
+Para esto es importante separar en nuestro Dockerfile las instrucciones de base y configuración de las instrucciones de ejecución. Esto nos permite usar imágenes temporales durante la construcción para luego utilizar la imagen definitiva. Un ejemplo con una aplicación Java:
+
+```dockerfile
+# Dockerfile
+
+# Build Stage
+FROM maven AS build
+WORKDIR /app
+COPY myapp /app
+RUN mvn package
+
+# Run Stage
+FROM tomcat
+COPY --from=build /app/target/file.war /usr/local/tomcat
+# ...
+```
+
+Al usar el alias *build* en `FROM maven AS build`, podemos hacer referencia a esta imagen en `COPY --from=build` para copiar lo necesario para la ejecución de nuestra aplicación.
+
+## No utilizar usuario root
+
+Cuando no especificamos lo contrario, al ejecutar una aplicación Docker lo hace con el usuario root, lo que es una malísima práctica en materia de seguridad, dado que el contenedor puede tener potencial acceso root al ordenador host, facilitando el escalado de privilegios para un atacante, no sólo para el contendor sino también para el host. Para esto, en Dockerfile:
+
+- Creamos un usuario y grupo específicos
+- Le asignamos los permisos necesarios en el directorio de la aplicación
+- Cambiamos para usar este usuario
+
+```dockerfile
+# Dockerfile
+# ...
+# Creamos grupo y usuario:
+RUN groupadd -r appgroup && useradd -g appgroup appuser
+
+# Hacerle propietario y dar permisos:
+RUN chown -R appuser:appgroup /app
+
+# Cambiar al nuevo usuario:
+USER appuser
+# ...
+```
+
+Algunas imágenes tienen un usuario no root y no es necesario realizar esto. Por ejemplo, la imagen `node:10-alpine` tiene el usuario `node` y sólo hay que añadir en Dockerfile: `USER node`.
+
+## Escanear las imágenes frente a vulnerabilidades
+
+Docker provee un comando para comprobar si tenemos vulnerabilidades en nuestra imagen:
+
+```bash
+$ docker scan myapp:1.0
+```
+
+Para esto necesitamos estar logados en Docker Hub:
+
+```bash
+$ docker login	
+```
+
+Docker usa el servicio Snyk para escanear nuestra imagen frente a vulnerabilidades. Este servicio usa una base de datos en constante actualización con volnerabilidades. El informe que nos devuelve nos incluye la versión del software en la que se corrige la vulnerabilidad.
+
+Si utilizamos Docker Hub, podemos configurar que cada vez que hacemos push de una imagen se compruebe su seguridad. Por supuesto, podemos integrar este análisis en nuestro CI/CD.
+
 # Recursos
 
 ## Docker
