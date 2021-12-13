@@ -880,6 +880,8 @@ COPY . .
 
 Con esto añadimos un paso más, muy corto, la copia de un archivo. Pero si este archivo no es modificado, cuando volvemos a construir el contenedor Docker no ejecuta el siguiente comando, ya que nada ha cambiado y, después, copia los archivos. Dado que no volvemos a instalar dependencias, el proceso `build` es mucho más rápido.
 
+Esto tiene que ver con las capas de la imagen: en resumen, cada instrucción en Dockerfile es una capa con su propia caché. Si la instrucción o los archivos a los que hace referencia no han cambiado, Docker utilizará la caché, haciendo el proceso mucho mñas rápido. En el momento en el que se detecte una modificación y Docker no utilice la caché, los siguientes pasos tampoco la utilizarán. En el apartado *Optimizar la caché para las capas de imagen*, del capítulo *Usando Docker en entornos de producción*, puedes ampliar detalles.
+
 ### Instrucciones de ejecución
 
 `EXPOSE`: informa a Docker del puerto en el que nuestra imagen estará escuchando peticiones. Importante: NO PUBLICA EL PUERTO, no lo hace accesible desde nuestro PC, tan sólo informa. El mapeo del puerto se debe especificar cuando levantamos el contenedor, por lo tanto la instrucción `EXPOSE` tan sólo documenta (en ocasiones es utilizado por algún proceso automático como veremos más adelante) el puerto que la aplicación de la imagen usará para escuchar peticiones:
