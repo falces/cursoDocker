@@ -141,6 +141,14 @@ $ sudo systemctl disable docker.service
 $ sudo systemctl disable containerd.service
 ```
 
+## Inslatación en equipos Mac antiguos
+
+En equipos Mac con procesador antiguo no podemos instalar Docker Desktop. Tenemos una herramienta deprecada por Docker que nos puede ayudar. Es una herramienta Legacy, pero que en según qué circustancias puede ayudarnos: Docker Toolbox.
+
+Descargamos el instalador y tendremos en una carpeta Docker dentro de Aplicaciones, un lanzador para nuestro terminal: abrirá nuestro terminal pero con Docker instanciado.
+
+https://programmerclick.com/article/98102415475/
+
 # Comandos: Docker CLI
 
 ## Docker Hub
