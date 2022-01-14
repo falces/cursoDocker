@@ -1935,7 +1935,7 @@ Algunas imágenes tienen un usuario no root y no es necesario realizar esto. Por
 
 ## Escanear las imágenes frente a vulnerabilidades
 
-Docker provee un comando para comprobar si tenemos vulnerabilidades en nuestra imagen:
+Docker provee un comando para comprobar si tenemos vulnerabilidades en nuestra imagen, utilizando el software de Snyk, pudiendo realizar hasta 10 test al mes:
 
 ```bash
 $ docker scan myapp:1.0
@@ -1950,6 +1950,22 @@ $ docker login
 Docker usa el servicio Snyk para escanear nuestra imagen frente a vulnerabilidades. Este servicio usa una base de datos en constante actualización con volnerabilidades. El informe que nos devuelve nos incluye la versión del software en la que se corrige la vulnerabilidad.
 
 Si utilizamos Docker Hub, podemos configurar que cada vez que hacemos push de una imagen se compruebe su seguridad. Por supuesto, podemos integrar este análisis en nuestro CI/CD.
+
+Ejecutar un test único:
+
+```bash
+$ docker scan myapp:mytag
+$ docker scan myapp:mytag --file path/to/Dockerfile
+```
+
+Ignorar vulnerabilidades de la imagen base:
+
+```bash
+$ docker scan myapp:mytag --exclude-base \
+  --file path/to/Dockerfile
+```
+
+Más información: https://docs.docker.com/engine/scan/.
 
 # Recursos
 
