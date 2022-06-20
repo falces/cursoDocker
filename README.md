@@ -1,5 +1,7 @@
 # Guía
 
+Versión actual: 1.0.1
+
 Esta documentación se ha ido realizando durante el progreso de cursos sobre Docker y Kubernetes en los que se ha trabajado con diferentes versiones de Docker y Docker Compose. Está publicada en https://github.com/falces/docker-docs, por lo que en caso de encontrar errores se agradece un Pull Request con la corrección.
 
 # Conceptos
@@ -400,7 +402,7 @@ db_data
 ### Listar volúmenes
 
 ```bash
-$ docker volumes ls
+$ docker volume ls
 ```
 
 ```
@@ -2016,3 +2018,10 @@ https://www.ibm.com/es-es/cloud/kubernetes-service/kubernetes-tutorials?utm_cont
 ### Travis
 
 https://www.travis-ci.com/
+
+# Control de versiones
+
+| Fecha      | Versión | Comentarios                                                  |
+| ---------- | ------- | ------------------------------------------------------------ |
+| 20/06/2022 | 1.0.1   | Se añade control de versiones<br />Se corrige `docker volumes ls` por docker volume ls. |
+
