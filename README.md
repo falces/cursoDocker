@@ -2023,5 +2023,5 @@ https://www.travis-ci.com/
 
 | Fecha      | Versión | Comentarios                                                  |
 | ---------- | ------- | ------------------------------------------------------------ |
-| 20/06/2022 | 1.0.1   | Se añade control de versiones<br />Se corrige `docker volumes ls` por docker volume ls. |
+| 20/06/2022 | 1.0.1   | Se añade control de versiones<br />Se corrige `docker volumes ls` por `docker volume ls`. |
 
