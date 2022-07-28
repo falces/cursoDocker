@@ -1475,6 +1475,8 @@ volumes:
 
 ## Redes
 
+### Crear y configurar
+
 Si no se especifica nada, por defecto Docker crea una red tipo bridge y añade a ella los contenedores que esté levantando. Podemos configurar una red en Compose y añadir a ella los servicios, configurando sus características. Creamos la red con la clave de primer nivel `networks`:
 
 ```yaml
@@ -1560,6 +1562,30 @@ networks:
   	    gateway: 100.0.0.1
 ```
 
+### Listar
+
+```bash
+$ docker network ls
+
+NETWORK ID          NAME                        DRIVER              SCOPE
+868c88a83bd6        bridge                      bridge              local
+92f7d20ed432        officeconverter_default     bridge              local
+3f96cfb7b591        officeconverter_default     bridge              local
+```
+
+### Borrar redes
+
+```bash
+# Borrar una red
+$ docker network rm <network Id>
+
+# Borrar varias redes
+$ docker network rm <network Id> rm <network Id>
+
+# Borrar todas las redes
+$ docker network prune
+```
+
 ## Ejecución
 
 Como hemos comentado, Docker Compose nos ayuda a ejecutar los comandos y parámetros que ejecutamos en terminal (`build`, `run`). Así:
@@ -1568,7 +1594,7 @@ Como hemos comentado, Docker Compose nos ayuda a ejecutar los comandos y paráme
 $ docker run myimage
 # Se corresponde con:
 $ docker-compose up
-$ docker-compose up -d # Ejecuta en segundo plano
+$ docker-compose up -d # Ejecuta en segundo plano (daemon)
 
 $ docker build .
 $ docker run myimage
@@ -1594,7 +1620,7 @@ vemos el estado de los contenedores que están en nuestro archivo `docker-compos
 
 ## Docker Compose CLI
 
-Disponemos de comandos para trabajar con Docker Compose desde la línea de comandos
+Disponemos de comandos para trabajar con Docker Compose desde la línea de comandos:
 
 - Ver el contenido de docker-compose.yaml
 
@@ -1627,6 +1653,9 @@ Disponemos de comandos para trabajar con Docker Compose desde la línea de coman
 
     ```bash
     $ docker-compose logs
+    
+    # Ver logs y la salida en tiempo real
+    $ docker-compose logs -f
     ```
 
 - Ver los últimos 10 logs:
