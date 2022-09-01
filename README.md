@@ -1682,6 +1682,14 @@ Disponemos de comandos para trabajar con Docker Compose desde la línea de coman
     $ docker-compose down
     ```
 
+- Forzar la recreación de un contenedor aunque su imagen o configuración no hayan cambiado:
+
+    ```bash
+    $ docker-compose up --force-recreate
+    ```
+
+    Esto es especialmente útil si tenemos algún tipo de error con redes que no se hayan eliminado correctamente y queden configuradas.
+
 # Kubernetes
 
 ## Comandos
