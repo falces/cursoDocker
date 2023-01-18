@@ -326,8 +326,11 @@ Borrar imágenes no asociadas a contenedor
 # Listar:
 $ docker images -f dangling=true
 
+# Listar y sólo mostrar IDs:
+$ docker images -f dangling=true -q
+
 # Eliminar:
-$ docker rmi -f $(docker images -f dangling=true)
+$ docker rmi -f $(docker images -f dangling=true -q)
 ```
 
 Borrar todas las imágenes:
@@ -336,7 +339,7 @@ Borrar todas las imágenes:
 $ docker rmi -f $(docker images -q)
 ```
 
-Borrar  todo: contenedores parados, redes no utilizadas por ningún contenedor, imágenes colgadas, caché:
+Borrar todo: contenedores parados, redes no utilizadas por ningún contenedor, imágenes colgadas, caché:
 
 ```bash
 $ docker system prune
@@ -362,7 +365,11 @@ $ docker stop <container_id>
 Envía una SIGKILL (señal de matar) al proceso primario que esté ejecutando el contenedor:
 
 ```bash
+# Parar un contenedor
 $ docker kill <container_id>
+
+# Parar múltiples contenedores
+$ docker kill $(docker ps -q)
 ```
 
 Si tras el comando `stop` el contenedor no se detiene en 10 segundos, Docker cancela el `stop` y envía un `kill` al contenedor
