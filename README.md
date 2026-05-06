@@ -91,30 +91,27 @@ $  sudo apt-get remove docker docker-engine docker.io containerd runc
 $ sudo apt-get update
 
 # Instalar prerequisitos:
-# Curso:
-$   sudo apt-get install \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        software-properties-common
-# Docker:
 $  sudo apt-get install \
         ca-certificates \
-    	curl \
-   		gnupg \
-    	lsb-release
-    	
+        curl \
+        gnupg
+
+# Crear directorio para keyrings:
+$ sudo install -m 0755 -d /etc/apt/keyrings
+
 # Descargar GPG Key oficial:
-$  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+$ sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
 # Añadir repositorio a APT:
 $ echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
   
 # Actualizar e instalar:
 $ sudo apt-get update
-$ sudo apt-get install docker-ce docker-ce-cli containerd.io
+$ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Probar:
 $ sudo docker run hello-world
@@ -509,7 +506,7 @@ Estas conexiones son gestionadas por objetos conocidos como network drivers:
 Con el atributo `--driver` indicaremos el tipo, en este caso, `bridge`:
 
 ```bash
-$ docker network create --driver brigde mi-red
+$ docker network create --driver bridge mi-red
 ```
 
 Docker nos devuelve el ID de la red creada:
@@ -1431,7 +1428,6 @@ volumes:
 ```
 
 ## Redes
-
 ### Crear y configurar
 
 Si no se especifica nada, por defecto Docker crea una red tipo bridge y añade a ella los contenedores que esté levantando. Podemos configurar una red en Compose y añadir a ella los servicios, configurando sus características. Creamos la red con la clave de primer nivel `networks`:
@@ -1541,8 +1537,9 @@ $ docker network prune
 ```
 
 ## Ejecución
-
 Como hemos comentado, Docker Compose nos ayuda a ejecutar los comandos y parámetros que ejecutamos en terminal (`build`, `run`). Así:
+
+> **Nota**: Desde Docker Desktop 3.4.0 (2021) el comando `docker-compose` (v1, escrito en Python) está deprecado y fue eliminado definitivamente en Docker Desktop 4.23 (2023). El subcomando integrado `docker compose` (v2, escrito en Go) es el estándar actual.
 
 ```bash
 $ docker run myimage
@@ -1761,7 +1758,7 @@ Lo que indica que puedes tener una versión diferente de la versión del anterio
 
 ```dockerfile
 # Dockerfile
-FROM node:17.0.1
+FROM node:22.0.0
 ```
 
 Cuanto más específico, mejor.
@@ -1779,7 +1776,7 @@ Debemos evitar:
 
 ```dockerfile
 # Dockerfile
-FROM node:17.0.1
+FROM node:22.0.0
 ```
 
 Si usamos imágenes más ligeras:
@@ -1793,7 +1790,7 @@ Usaremos:
 
 ```dockerfile
 # Dockerfile
-FROM node:17.0.1-alpine
+FROM node:22.0.0-alpine
 ```
 
 Alpine es una distribución de Linux muy ligera, enfocada a la seguridad y muy popular. Si nuestra aplicación no necesita ninguna utilidad especial, elegiremos este tipo de distribuciones.
@@ -1829,7 +1826,7 @@ Pero cuando una capa cambia, todas las capas siguientes se regeneran, no se leen
 
 ```dockerfile
 # Dockerfile
-FROM node:17.0.1-alpine			# CACHÉ
+FROM node:22.0.0-alpine			# CACHÉ
 WORKDIR /app				   # CACHÉ
 COPY myapp /app				   # NO CACHÉ
 RUN npm install --production	# NO CACHÉ
@@ -1840,7 +1837,7 @@ En este ejemplo vemos que cada vez que un archivo de nuestra aplicación se modi
 
 ```dockerfile
 # Dockerfile
-FROM node:17.0.1-alpine			# CACHÉ
+FROM node:22.0.0-alpine			# CACHÉ
 WORKDIR /app				   # CACHÉ
 COPY package.json .			   # CACHÉ
 RUN npm install --production	# CACHÉ
@@ -1924,41 +1921,46 @@ USER appuser
 # ...
 ```
 
-Algunas imágenes tienen un usuario no root y no es necesario realizar esto. Por ejemplo, la imagen `node:10-alpine` tiene el usuario `node` y sólo hay que añadir en Dockerfile: `USER node`.
+Algunas imágenes tienen un usuario no root y no es necesario realizar esto. Por ejemplo, la imagen `node:22-alpine` tiene el usuario `node` y sólo hay que añadir en Dockerfile: `USER node`.
 
 ## Escanear las imágenes frente a vulnerabilidades
 
-Docker provee un comando para comprobar si tenemos vulnerabilidades en nuestra imagen, utilizando el software de Snyk, pudiendo realizar hasta 10 test al mes:
+> **Nota**: El comando `docker scan` fue eliminado en Docker Engine 27 (2024). La herramienta oficial actual es **Docker Scout**.
 
-```bash
-$ docker scan myapp:1.0
-```
+Docker Scout analiza las imágenes en busca de vulnerabilidades CVE y proporciona recomendaciones para solucionarlas. Está integrado en Docker CLI desde Docker Desktop 4.17.
 
 Para esto necesitamos estar logados en Docker Hub:
 
 ```bash
-$ docker login	
+$ docker login
 ```
 
-Docker usa el servicio Snyk para escanear nuestra imagen frente a vulnerabilidades. Este servicio usa una base de datos en constante actualización con volnerabilidades. El informe que nos devuelve nos incluye la versión del software en la que se corrige la vulnerabilidad.
-
-Si utilizamos Docker Hub, podemos configurar que cada vez que hacemos push de una imagen se compruebe su seguridad. Por supuesto, podemos integrar este análisis en nuestro CI/CD.
-
-Ejecutar un test único:
+### Resumen rápido de vulnerabilidades
 
 ```bash
-$ docker scan myapp:mytag
-$ docker scan myapp:mytag --file path/to/Dockerfile
+$ docker scout quickview myapp:1.0
 ```
 
-Ignorar vulnerabilidades de la imagen base:
+### Listado detallado de CVEs
 
 ```bash
-$ docker scan myapp:mytag --exclude-base \
-  --file path/to/Dockerfile
+$ docker scout cves myapp:1.0
+$ docker scout cves myapp:1.0 --only-severity critical,high
 ```
 
-Más información: https://docs.docker.com/engine/scan/.
+### Ver recomendaciones de actualización
+
+```bash
+$ docker scout recommendations myapp:1.0
+```
+
+### Comparar dos versiones de una imagen
+
+```bash
+$ docker scout compare myapp:1.0 myapp:2.0
+```
+
+Docker Scout puede integrarse en el CI/CD y en Docker Hub para analizar automáticamente cada push de imagen. Más información: https://docs.docker.com/scout/.
 
 # Recursos
 
